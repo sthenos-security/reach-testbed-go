@@ -96,6 +96,7 @@ jobs:
 
       # Reachable + GitHub integration tokens.
       REACHABLE_API_KEY: ${{ secrets.REACHABLE_API_KEY }}
+      REACHABLE_GITHUB_TOKEN: ${{ secrets.REACHABLE_GITHUB_TOKEN }}
       GITHUB_TOKEN: ${{ github.token }}
       GH_TOKEN: ${{ github.token }}
       MCP_GITHUB_TOKEN: ${{ secrets.MCP_GITHUB_TOKEN }}
@@ -493,11 +494,31 @@ jobs:
       - name: Open remediation PR
         if: ${{ inputs.remediate && !inputs.rescan_only && inputs.create_pr }}
         run: |
-          gh pr create \
+          pr_token="${REACHABLE_GITHUB_TOKEN:-${MCP_GITHUB_TOKEN:-${GH_TOKEN:-}}}"
+          if [ -z "$pr_token" ]; then
+            echo "No GitHub token available for PR creation."
+            echo "Remediation branch pushed: https://github.com/${GITHUB_REPOSITORY}/tree/${REACHABLE_REMEDIATION_BRANCH}"
+            exit 0
+          fi
+
+          set +e
+          pr_output="$(GH_TOKEN="$pr_token" gh pr create \
             --base "${{ inputs.target_branch }}" \
             --head "$REACHABLE_REMEDIATION_BRANCH" \
             --title "Reachable remediation demo" \
-            --body "Automated Reachable remediation proof branch. CI scanned, generated a database-backed prompt bundle, ran the selected coding agent, tested, rescanned, audited, and verified integrity."
+            --body "Automated Reachable remediation proof branch. CI scanned, generated a database-backed prompt bundle, ran the selected coding agent, tested, rescanned, audited, and verified integrity." 2>&1)"
+          pr_status="$?"
+          set -e
+
+          if [ "$pr_status" -ne 0 ]; then
+            echo "::warning::Could not open remediation PR automatically."
+            printf '%s\n' "$pr_output"
+            echo "Remediation branch pushed: https://github.com/${GITHUB_REPOSITORY}/tree/${REACHABLE_REMEDIATION_BRANCH}"
+            echo "To allow automatic PR creation, enable the repository Actions setting that lets GitHub Actions create pull requests, or set REACHABLE_GITHUB_TOKEN to a fine-grained token with Contents and Pull requests write permissions."
+            exit 0
+          fi
+
+          printf '%s\n' "$pr_output"
 
       - name: Upload remediation artifacts
         if: always()

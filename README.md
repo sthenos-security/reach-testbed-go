@@ -166,6 +166,7 @@ Additional supported GitHub secrets and variables:
 | Name | Used by |
 |------|---------|
 | `REACHABLE_API_KEY` | Optional Reachable cloud publish/org attach. |
+| `REACHABLE_GITHUB_TOKEN` | Optional fine-grained token for opening PRs when repository Actions settings block PR creation by `GITHUB_TOKEN`. Needs Contents and Pull requests write permissions. |
 | `MCP_GITHUB_TOKEN` | MCP-based agent GitHub access. |
 | `OPENROUTER_API_KEY` | Optional Reachable OpenRouter provider for non-demo scan/enrichment. |
 | `ANTHROPIC_API_KEY` | One-key `claude-anthropic` mode. |
@@ -187,7 +188,11 @@ Additional supported GitHub secrets and variables:
 
 `GITHUB_TOKEN` is provided by GitHub Actions. The workflow grants it write
 access to contents, pull requests, and security events so it can push the
-remediation branch, open a PR, and upload SARIF.
+remediation branch, open a PR, and upload SARIF. Some repositories disable the
+GitHub Actions setting that lets the built-in token create pull requests. In
+that case the workflow still pushes the `reachable-remediate-*` branch and logs
+the branch URL; set `REACHABLE_GITHUB_TOKEN` or enable that repository setting
+when you want PR creation to be fully automatic.
 
 ### CI Cache
 
