@@ -1,50 +1,126 @@
-# Customer-Facing Baseline Manifest
+# Reachable Go Testbed Expected Results
 
-This manifest documents the expected scanner outcomes for `reach-testbed-go`.
-All secrets, personal data, infrastructure, and malware-like markers in this
-fixture are synthetic and exist only to validate detection behavior.
+This file is the customer-facing baseline for `reach-testbed-go`. It explains
+what the demo is expected to find before remediation, what a clean proof looks
+like after remediation, and what each issue means in plain language.
 
-Line numbers are intentionally omitted so this baseline remains stable as the
-fixture evolves.
+All credentials, personal data, URLs, and suspicious strings in this repository
+are synthetic. This repository is intentionally vulnerable and must not be
+deployed.
 
-## Expected Findings
+## Golden Baseline
 
-| ID | Family/type | Expected risk | Expected reachability | Expected exploitability/verdict | File/route | Plain-English issue explanation for non-security stakeholders | Expected remediation |
-|----|-------------|---------------|-----------------------|---------------------------------|------------|---------------------------------------------------------------|----------------------|
-| GO-CVE-REACH-01 | CVE / dependency | High | Reachable through public route | Exploitable: user input reaches vulnerable YAML parser | `internal/handlers/cve.go`; `POST /parse-yaml` | A request body is parsed by an outdated YAML library, so malformed customer-supplied content can exercise vulnerable dependency code. | Upgrade or replace `gopkg.in/yaml.v2`; use a maintained safe decoder and keep request size limits. |
-| GO-CVE-DEF-01 | CVE / dependency, defended no-fix | Low | Reachable through public route, guarded | Defended: compensating input controls reduce practical exposure | `internal/handlers/cve.go`; `POST /parse-language` | The service uses an older text-processing dependency, but only accepts a small allow-listed set of language tags before invoking it. | Prefer upgrading `golang.org/x/text` when possible; if accepted as no-fix, retain and test the allow-list guard. |
-| GO-DEP-UPGRADE-01 | CVE / dependency upgrade target | High | Reachable via `GO-CVE-REACH-01` | Verdict: upgrade or code-fix candidate | `go.mod`; `gopkg.in/yaml.v2 v2.4.0` | The dependency used by the YAML route should be treated as a required remediation target. | Replace with a maintained parser or safe decoder path and update module metadata. |
-| GO-CVE-NOFIX-01 | CVE / dependency accepted risk | Low | Reachable only behind strict validation | Verdict: accepted no-fix with compensating control | `go.mod`; `golang.org/x/text v0.3.7`; `POST /parse-language` | This dependency remains intentionally old in the fixture to confirm scanners can record accepted risk when real controls are present. | Document the exception, monitor for changed exposure, and keep the route-level validation in place. |
-| GO-CWE-REACH-01 | CWE-78 command injection | Critical | Reachable through public route | Exploitable: user input is concatenated into shell command | `internal/handlers/cwe.go`; `GET /diagnostics/ping` | A caller can control part of a shell command used for diagnostics, which could let them run unintended commands. | Remove shell execution; pass validated hostnames as separate process arguments or use a networking library. |
-| GO-CWE-DEF-01 | CWE-78 command injection, defended | Low | Reachable through public route, guarded | Defended: validation and no shell invocation | `internal/handlers/cwe.go`; `GET /diagnostics/safe-ping` | The safer diagnostic endpoint validates the hostname and calls `ping` without a shell, limiting command-injection risk. | Keep hostname validation centralized and continue avoiding shell-based command construction. |
-| GO-SECRET-REACH-01 | Secret / hardcoded token | High | Reachable through public route | Exposed: static service token returned to callers | `internal/handlers/secrets.go`; `GET /token` | A hardcoded service token is embedded in code and returned by an endpoint, which models accidental credential disclosure. | Remove hardcoded secrets; load values from a secret manager or environment and never return them in responses. |
-| GO-SECRET-REACH-02 | Secret / cloud credentials | High | Reachable through public route | Exposed: AWS- and GitHub-shaped tokens returned to callers | `internal/handlers/secrets.go`; `GET /cloud-tokens` | Cloud-shaped credentials are stored in code and disclosed by the API, modeling a leak that could affect external services. | Rotate any real exposed credentials, move secrets to managed storage, and scrub secret values from responses and logs. |
-| GO-SECRET-CONFIG-01 | Secret / config | Medium | Present in deployable configuration | Exposed in configuration file | `config/app.yaml`; `secrets.fallback_api_key` | A fallback API key is stored directly in application configuration, which makes accidental distribution more likely. | Remove fallback credentials from config; reference a secret manager or environment variable. |
-| GO-SECRET-IAC-01 | Secret / IaC | Medium | Present in Kubernetes manifest | Exposed in infrastructure manifest | `deploy/kubernetes.yaml`; `REACH_TESTBED_SERVICE_TOKEN` | A service token is placed directly in a Kubernetes deployment file, so anyone with manifest access can read it. | Store the value in a Kubernetes Secret or external secret provider and reference it from the deployment. |
-| GO-SECRET-DEF-01 | Secret / environment-only, defended | Low | Reachable through public route, not hardcoded | Defended: no fallback secret in code | `internal/handlers/secrets.go`; `GET /env-token` | The endpoint confirms whether a token is configured without embedding or returning the secret value. | Keep secrets externalized and avoid adding default or fallback credentials. |
-| GO-CONFIG-REACH-01 | Config / insecure application settings | Medium | Active in application configuration | Risk present: debug and permissive CORS enabled | `config/app.yaml` | Debug mode and wildcard CORS are enabled, which can expose internal behavior and allow broad browser access. | Disable debug in production and restrict CORS origins to trusted domains. |
-| GO-CONFIG-REACH-02 | Config / insecure application settings | High | Active in application configuration | Risk present: admin bind-all, TLS peer checks disabled, header logging enabled | `config/app.yaml` | Administrative services listen on all interfaces, TLS peer verification is off, and request headers may be logged. | Bind admin services to private interfaces, enforce TLS verification, and redact sensitive headers from logs. |
-| GO-IAC-REACH-01 | Config/IaC / Kubernetes hardening | High | Present in deployment manifest | Risk present: privileged container with writable root filesystem | `deploy/kubernetes.yaml` | The container is configured with elevated privileges and a writable filesystem, increasing blast radius if compromised. | Drop privileged mode and privilege escalation, run as non-root, and enable a read-only root filesystem where practical. |
-| GO-IAC-REACH-02 | Config/IaC / Terraform network exposure | High | Present in infrastructure manifest | Risk present: SSH open to the internet | `deploy/main.tf` | The security group allows SSH from any IP address, making administrative access broadly exposed. | Restrict SSH ingress to approved networks or replace direct SSH with a managed access path. |
-| GO-DLP-REACH-01 | DLP / personal data export | High | Reachable through public route | Exposed: CSV response contains synthetic PII and card-like data | `internal/handlers/dlp.go`; `GET /support/export` | The support export returns names, email, SSN-like values, phone numbers, and card-like data. | Require authorization, minimize exported fields, mask sensitive values, and audit exports. |
-| GO-DLP-REACH-02 | DLP / personal and financial profile | High | Reachable through public route | Exposed: JSON response contains synthetic regulated data | `internal/handlers/dlp.go`; `GET /support/profile` | The profile endpoint returns DOB, tax ID, bank-routing, account, and passport-shaped values. | Gate access by role, tokenize or mask sensitive fields, and avoid returning full identifiers unless required. |
-| GO-DLP-ASSESS-01 | DLP / test corpus | Low | Not served directly by a route | Assess: sensitive-looking testdata only | `testdata/dlp/customers.csv` | A local test corpus contains synthetic customer records used for scanner validation, but the application does not directly expose it. | Keep the file out of production artifacts or clearly mark it as synthetic testdata. |
-| GO-AI-REACH-01 | AI/LLM misuse / prompt injection | Medium | Reachable through public route | Exploitable pattern: user text is mixed into privileged prompt context | `internal/handlers/ai.go`; `POST /ai/answer` | User input is appended to a system-style payroll-admin prompt, making instruction boundaries unclear. | Separate system and user messages, treat user text as data, and add prompt-injection filtering or policy checks. |
-| GO-AI-REACH-02 | AI/LLM misuse / agent tool misuse | High | Reachable through public route | Exploitable pattern: user task influences admin agent tool instructions | `internal/handlers/ai.go`; `POST /ai/agent-plan` | A user-provided task is inserted into an admin-context agent tool spec, which models unsafe delegation to powerful tools. | Use constrained tool schemas, explicit authorization, allow-listed actions, and policy checks before tool execution. |
-| GO-AI-DEF-01 | AI/LLM misuse, defended | Low | Reachable through public route, guarded | Defended: quoted user data and basic unsafe-instruction filter | `internal/handlers/ai.go`; `POST /ai/safe-answer` | The safer endpoint quotes user text as data and rejects a known instruction-override phrase. | Maintain strict role separation and expand safety checks as new prompt-abuse patterns are identified. |
-| GO-SUSP-REACH-01 | Suspicious/malware-like behavior | High | Reachable through admin route | Risk present: arbitrary URL downloaded to temporary file | `internal/handlers/suspicious.go`; `POST /admin/fetch-tool` | The admin route downloads a caller-supplied URL and writes it to disk, which resembles unsafe tool staging. | Restrict downloads to trusted sources, verify signatures and checksums, and avoid writing untrusted binaries. |
-| GO-SUSP-REACH-02 | Suspicious/malware marker | Medium | Reachable through admin route | Marker exposed: encoded pipe-to-shell and cron-beacon text, not executed | `internal/handlers/suspicious.go`; `GET /admin/suspicious-markers` | The endpoint returns synthetic strings that look like download-and-execute and scheduled beacon behavior. | Keep markers isolated to test fixtures; remove such strings from production code and monitor for real execution paths. |
-| GO-SUSP-ASSESS-01 | Suspicious/malware-like dead code | Low | Not registered as a route | Assess: inactive marker code, not executed by service | `internal/handlers/suspicious.go`; `stagedDropper` | An unregistered helper contains a synthetic download-and-execute marker, but normal application routing does not call it. | Remove dead suspicious code from production builds or keep it clearly isolated in test-only fixtures. |
+Latest verified baseline:
 
-## Coverage Summary
+```text
+repo:    /Users/alaindazzi/src/reach-testbed-go
+branch:  main
+scan:    /Users/alaindazzi/.reachable/scans/reach-testbed-go-64462931/main/20260529-081617-9b16e1
+result:  25 signals, 22 actionable
+```
 
-| Category | Included cases |
-|----------|----------------|
-| CVE / dependency | Reachable YAML parser, defended no-fix dependency, upgrade target, accepted-risk no-fix case |
-| CWE | Reachable command injection and defended safe command execution |
-| Secret | Hardcoded route secrets, config/IaC secrets, and defended environment-only secret handling |
-| Config/IaC | Insecure application config, Kubernetes privilege settings, and Terraform network exposure |
-| DLP | Reachable exported personal data plus assess-only synthetic testdata |
-| AI/LLM | Prompt-injection pattern, unsafe agent tool prompt, and defended prompt handling |
-| Suspicious/malware | Reachable download behavior, reachable suspicious markers, and assess-only dead code |
-| Defended and assess | Explicit defended verdicts for controlled exposure; assess verdicts for non-routed or test-only content |
+Expected signal count:
+
+| Family | Expected total | Expected actionable | Expected notes |
+|--------|----------------|--------------------|----------------|
+| CVE | 1 | 1 | Reachable vulnerable Go dependency. |
+| CWE | 12 | 12 | Command injection, SSRF/network fetch, and error disclosure patterns. |
+| Secret | 5 | 2 | Two reachable synthetic tokens plus three intentionally filtered/non-actionable markers. |
+| DLP | 2 | 2 | Synthetic personal data logged and sent over HTTP. |
+| AI | 5 | 5 | LLM calls and unguarded user-controlled flows. |
+
+Expected remediation proof:
+
+| Proof target | Expected outcome |
+|--------------|------------------|
+| `go test ./...` | Passes before and after remediation. |
+| Post-remediation scan | `ACTION REQUIRED 0`. |
+| Residual findings | At most filtered `NOT_REACHABLE` synthetic secret markers. |
+| `reachctl audit --latest --summary` | Passes data-quality checks. |
+| `reachctl integrity --latest` | Passes dashboard/database integrity checks. |
+
+## Expected Findings Table
+
+| ID | Type | Expected risk | Expected reachability | Location | Business explanation | Expected remediation |
+|----|------|---------------|-----------------------|----------|----------------------|----------------------|
+| GO-CVE-01 | CVE-2022-32149 / `golang.org/x/text` | High | Reachable | `internal/handlers/cve.go`; `go.mod` | A public language parsing route exercises an old dependency with a denial-of-service advisory. | Upgrade `golang.org/x/text` to a fixed version and keep route-level input validation. |
+| GO-CWE-01 | CWE / command injection | Critical | Reachable | `internal/handlers/cwe.go` | A request parameter is concatenated into a shell command. A caller could turn a diagnostic endpoint into command execution. | Remove shell string construction. Validate hostnames and pass arguments as an exec argument array or use a network library. |
+| GO-CWE-02 | CWE / user-controlled URL fetch | Critical | Reachable | `internal/handlers/suspicious.go` | An admin route downloads from a caller-supplied URL. This models unsafe tool staging and SSRF-style fetch behavior. | Restrict sources to a trusted allowlist, require authentication, verify checksums/signatures, and avoid arbitrary outbound fetches. |
+| GO-CWE-03 | CWE / SSRF HTTP client | Medium | Reachable | `internal/handlers/suspicious.go` | User input reaches `http.Get`, so server-side infrastructure could be asked to call untrusted destinations. | Use URL validation, deny private/internal ranges, enforce trusted schemes/hosts, and add timeouts. |
+| GO-CWE-04 | CWE / error disclosure | Medium | Reachable | `internal/handlers/cve.go` | Parser errors are returned directly to clients, potentially exposing implementation details. | Return generic client errors and log details internally. |
+| GO-CWE-05 | CWE / error disclosure | Medium | Reachable | `internal/handlers/ai.go` | JSON decoding errors are returned directly from AI endpoints. | Return generic bad-request text and preserve details only in structured logs. |
+| GO-CWE-06 | CWE / error disclosure | Medium | Reachable | `internal/handlers/suspicious.go` | Network, file, and copy errors from the tool-fetch path are exposed to callers. | Return generic operational errors; keep internal details in logs or audit events. |
+| GO-SECRET-01 | Secret / GitHub token shape | Medium | Reachable | `internal/handlers/secrets.go` | A synthetic GitHub-shaped token is embedded in code and returned by an API. In a real system this would be a credential leak. | Rotate the value, remove it from code, load it from a secret manager, and never return it in responses. |
+| GO-SECRET-02 | Secret / duplicate detector confirmation | Medium | Reachable | `internal/handlers/secrets.go` | A second scanner independently confirms the same reachable synthetic token. | Same as `GO-SECRET-01`; duplicate detections should collapse into the same remediation work. |
+| GO-SECRET-03 | Secret / AWS access key shape | Info | Not reachable | `internal/handlers/secrets.go` | An AWS-shaped synthetic marker is present for detector coverage but is filtered as non-actionable in the latest proof. | Keep only synthetic test markers in fixtures; never put real cloud credentials in source. |
+| GO-SECRET-04 | Secret / workflow token variables | Info | Not reachable | `.github/workflows/reachable-remediate.yml` | `GITHUB_TOKEN` and `GH_TOKEN` are environment variable names used by GitHub tooling, not real secret values. | No code fix required. They should remain filtered/non-actionable. |
+| GO-DLP-01 | DLP / PII to log | Critical | Reachable | `internal/handlers/dlp.go` | Synthetic SSN and date-of-birth values are written to logs. In production this would create regulated-data exposure. | Mask sensitive values, minimize logging, and add structured audit logging without raw identifiers. |
+| GO-DLP-02 | DLP / PII to outbound HTTP | Critical | Reachable | `internal/handlers/dlp.go` | Synthetic personal data is sent to an external analytics endpoint. | Remove raw PII from outbound telemetry, tokenize fields, and enforce data-sharing controls. |
+| GO-AI-01 | AI / LLM API call with sensitive context | Critical | Reachable | `internal/handlers/ai.go` | User-controlled prompt content is sent to an LLM call in an admin-style context. | Separate system and user messages, treat user content as data, and apply policy checks before model calls. |
+| GO-AI-02 | AI / agent tool instruction risk | Critical | Reachable | `internal/handlers/ai.go` | User input is mixed into an internal automation-agent tool specification. | Use constrained tool schemas, allowlisted actions, explicit authorization, and policy checks. |
+| GO-AI-03 | AI / unguarded flow to command execution | Medium | Reachable | `internal/handlers/cwe.go` | Reachable taint flow confirms the command-injection path has user-controlled input. | Fixed by the command-injection remediation. |
+| GO-AI-04 | AI / unguarded flow to error/output response | Medium | Reachable | `internal/handlers/cwe.go` | User-controlled diagnostic behavior can influence returned output. | Fixed by removing shell execution and normalizing errors. |
+| GO-AI-05 | AI / unguarded flow to network fetch | Medium | Reachable | `internal/handlers/suspicious.go` | User input controls the outbound fetch destination. | Fixed by the URL allowlist and SSRF controls. |
+
+Some rows represent multiple scanner hits on the same source file and behavior.
+That is expected. The demo should show that Reachable groups the work into a
+bounded remediation prompt rather than asking a developer to manually triage
+every raw scanner row.
+
+## No-Fix CVE Handling
+
+The compact Go baseline currently contains one fix-available CVE. The prompt
+contract also supports no-fix CVEs: when a future scan reports a reachable CVE
+without an upgrade path, the agent must implement or document compensating
+controls instead of inventing a fake dependency version.
+
+Valid compensating controls include:
+
+- input validation and size limits
+- feature disablement or route gating
+- authentication/authorization checks
+- isolation, timeout, and resource limits
+- explicit accepted-risk documentation when code change is not possible
+
+## Commands
+
+Baseline validation:
+
+```bash
+cd /Users/alaindazzi/src/reach-core
+scripts/reach-testbed-go-agent-loop.sh \
+  --fixture /Users/alaindazzi/src/reach-testbed-go \
+  --base-branch main \
+  --branch reachable-remediate-demo-$(date +%Y%m%d%H%M%S)
+```
+
+Full local remediation proof with Codex:
+
+```bash
+cd /Users/alaindazzi/src/reach-core
+scripts/reach-testbed-go-agent-loop.sh \
+  --fixture /Users/alaindazzi/src/reach-testbed-go \
+  --base-branch main \
+  --branch reachable-remediate-codex-$(date +%Y%m%d%H%M%S) \
+  --agent codex \
+  --run-agent \
+  --prove
+```
+
+Full local remediation proof with OpenCode:
+
+```bash
+cd /Users/alaindazzi/src/reach-core
+OPENCODE_MODEL=opencode/deepseek-v4-flash-free \
+scripts/reach-testbed-go-agent-loop.sh \
+  --fixture /Users/alaindazzi/src/reach-testbed-go \
+  --base-branch main \
+  --branch reachable-remediate-opencode-$(date +%Y%m%d%H%M%S) \
+  --agent opencode \
+  --run-agent \
+  --prove
+```
+
+Claude Code uses the same harness with `--agent claude`; it requires a valid
+Claude Code login or `ANTHROPIC_API_KEY` / `CLAUDE_CODE_OAUTH_TOKEN` in the
+environment.

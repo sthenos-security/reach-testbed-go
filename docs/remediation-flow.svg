@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="820" viewBox="0 0 1600 820" role="img" aria-labelledby="title desc">
+  <title id="title">Reachable CI Autoremediation Flow</title>
+  <desc id="desc">High-level CI flow from code change to Reachable scan, coding agent remediation, proof scan, branch, and pull request.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#07111f"/>
+      <stop offset="55%" stop-color="#0b1220"/>
+      <stop offset="100%" stop-color="#07151a"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#172234"/>
+      <stop offset="100%" stop-color="#0d1523"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#39d2c0"/>
+      <stop offset="100%" stop-color="#5b8cff"/>
+    </linearGradient>
+    <linearGradient id="agent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#22345a"/>
+      <stop offset="100%" stop-color="#12362f"/>
+    </linearGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="18" stdDeviation="20" flood-color="#000814" flood-opacity="0.45"/>
+    </filter>
+    <marker id="arrow" viewBox="0 0 14 14" refX="11" refY="7" markerWidth="11" markerHeight="11" orient="auto-start-reverse">
+      <path d="M1 1 L13 7 L1 13 Z" fill="#5b8cff"/>
+    </marker>
+    <style>
+      .tiny { font: 600 18px ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: 2px; }
+      .label { font: 700 28px ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: 0; }
+      .body { font: 500 19px ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: 0; }
+      .mono { font: 700 18px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; letter-spacing: 0; }
+      .muted { fill: #8fa2bd; }
+      .text { fill: #f4f7fb; }
+      .line { stroke: #5b8cff; stroke-width: 4; fill: none; marker-end: url(#arrow); }
+      .line2 { stroke: #39d2c0; stroke-width: 3; fill: none; marker-end: url(#arrow); stroke-dasharray: 10 12; }
+      .card { fill: url(#panel); stroke: #263951; stroke-width: 2; rx: 24; filter: url(#softShadow); }
+      .agentCard { fill: url(#agent); stroke: #367566; stroke-width: 2; rx: 24; filter: url(#softShadow); }
+      .badge { fill: #0c1a2c; stroke: #28425f; stroke-width: 2; rx: 18; }
+      .success { fill: #0b2b23; stroke: #22c897; stroke-width: 2; rx: 18; }
+      .warn { fill: #2b2208; stroke: #f5c542; stroke-width: 2; rx: 18; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="820" fill="url(#bg)"/>
+  <path d="M78 118 C290 54 404 86 548 130 C724 184 864 136 1034 86 C1188 42 1352 54 1512 122" fill="none" stroke="#0f3a54" stroke-width="3" opacity="0.65"/>
+  <path d="M128 710 C314 664 482 694 650 730 C826 768 1032 744 1216 684 C1350 640 1460 646 1530 690" fill="none" stroke="#164b44" stroke-width="3" opacity="0.55"/>
+
+  <text x="72" y="70" class="tiny" fill="#68d9ff">REACHABLE</text>
+  <text x="72" y="116" class="label text">CI Autoremediation, Without a Human Bottleneck</text>
+  <text x="72" y="150" class="body muted">A safe branch-first loop: scan, generate a bounded prompt, let the selected agent fix, then prove the result.</text>
+  <text x="1330" y="72" class="tiny muted">DEVOPS VIEW</text>
+
+  <rect x="70" y="212" width="235" height="150" class="card"/>
+  <circle cx="118" cy="260" r="24" fill="#13253a" stroke="#4c6f99" stroke-width="2"/>
+  <path d="M105 260 h26 M118 247 v26" stroke="#78d7ff" stroke-width="4" stroke-linecap="round"/>
+  <text x="152" y="252" class="tiny muted">TRIGGER</text>
+  <text x="100" y="303" class="label text">Code Change</text>
+  <text x="100" y="333" class="body muted">push or manual run</text>
+
+  <path class="line" d="M315 287 H418"/>
+
+  <rect x="430" y="190" width="288" height="195" class="card"/>
+  <text x="462" y="234" class="tiny" fill="#69b7ff">REACHABLE</text>
+  <text x="462" y="274" class="label text">Scan &amp; Rank</text>
+  <text x="462" y="306" class="body muted">signals, reachability,</text>
+  <text x="462" y="332" class="body muted">SARIF, audit proof</text>
+  <rect x="462" y="348" width="160" height="36" class="badge"/>
+  <text x="482" y="372" class="mono" fill="#b9c8dc">repo evidence</text>
+
+  <path class="line" d="M728 287 H827"/>
+
+  <rect x="840" y="190" width="288" height="195" class="card"/>
+  <text x="872" y="234" class="tiny" fill="#f5c542">CONTROL</text>
+  <text x="872" y="274" class="label text">Kill Switch</text>
+  <text x="872" y="306" class="body muted">remediate=false</text>
+  <text x="872" y="332" class="body muted">means scan-only proof</text>
+  <rect x="872" y="348" width="154" height="36" class="warn"/>
+  <text x="895" y="372" class="mono" fill="#ffe18a">safe default</text>
+
+  <path class="line" d="M1138 287 H1237"/>
+
+  <rect x="1250" y="190" width="280" height="195" class="card"/>
+  <text x="1282" y="234" class="tiny" fill="#39d2c0">BUNDLE</text>
+  <text x="1282" y="274" class="label text">Prompt Batch</text>
+  <text x="1282" y="306" class="body muted">bounded fixes with</text>
+  <text x="1282" y="332" class="body muted">test commands</text>
+  <rect x="1282" y="348" width="176" height="36" class="badge"/>
+  <text x="1302" y="372" class="mono" fill="#b9c8dc">audit artifact</text>
+
+  <path class="line2" d="M986 396 V496 H308 V386"/>
+  <text x="514" y="483" class="mono" fill="#6debdc">scan-only path: audit + publish findings</text>
+
+  <path class="line" d="M1390 397 V471"/>
+
+  <rect x="1110" y="485" width="420" height="185" class="agentCard"/>
+  <text x="1144" y="529" class="tiny" fill="#9debdc">AGENT EXECUTOR</text>
+  <text x="1144" y="569" class="label text">Claude, Codex, OpenCode</text>
+  <text x="1144" y="602" class="body muted">or a custom command that</text>
+  <text x="1144" y="628" class="body muted">receives the prompt path</text>
+  <rect x="1144" y="642" width="104" height="36" class="badge"/>
+  <text x="1164" y="666" class="mono" fill="#b9c8dc">models</text>
+  <rect x="1260" y="642" width="102" height="36" class="badge"/>
+  <text x="1281" y="666" class="mono" fill="#b9c8dc">tokens</text>
+  <rect x="1374" y="642" width="104" height="36" class="badge"/>
+  <text x="1393" y="666" class="mono" fill="#b9c8dc">limits</text>
+
+  <path class="line" d="M1096 578 H998"/>
+
+  <rect x="760" y="485" width="226" height="185" class="card"/>
+  <text x="792" y="529" class="tiny" fill="#69b7ff">BRANCH</text>
+  <text x="792" y="569" class="label text">One Review</text>
+  <text x="792" y="602" class="body muted">all changes land on</text>
+  <text x="792" y="628" class="body muted">reachable-remediate-*</text>
+
+  <path class="line" d="M748 578 H650"/>
+
+  <rect x="360" y="485" width="278" height="185" class="card"/>
+  <text x="392" y="529" class="tiny" fill="#39d2c0">PROOF</text>
+  <text x="392" y="569" class="label text">Test + Rescan</text>
+  <text x="392" y="602" class="body muted">unit tests, Reachable</text>
+  <text x="392" y="628" class="body muted">audit, integrity checks</text>
+  <rect x="392" y="642" width="170" height="36" class="success"/>
+  <text x="413" y="666" class="mono" fill="#8ef4d4">zero actionable</text>
+
+  <path class="line" d="M348 578 H250"/>
+
+  <rect x="70" y="485" width="168" height="185" class="card"/>
+  <text x="100" y="529" class="tiny" fill="#69b7ff">OUTPUT</text>
+  <text x="100" y="569" class="label text">Pull</text>
+  <text x="100" y="602" class="label text">Request</text>
+  <text x="100" y="635" class="body muted">evidence attached</text>
+
+  <rect x="70" y="726" width="1460" height="48" rx="24" fill="#0b1524" stroke="#20354f" stroke-width="2"/>
+  <rect x="90" y="739" width="220" height="22" rx="11" fill="url(#accent)"/>
+  <text x="330" y="756" class="mono" fill="#b9c8dc">Operator knobs: remediate, agent, provider, model, signal families, max batches, test command, PR creation</text>
+</svg>

@@ -1,34 +1,54 @@
 # reach-testbed-go
 
-Intentionally vulnerable Go fixture repository for exercising REACHABLE signal
-families against a compact `net/http` service.
+Intentionally vulnerable Go fixture repository for demonstrating Reachable
+CI/CD scanning and automated remediation with coding agents.
 
 > Do not deploy this application. It contains synthetic security issues for
 > scanner validation only.
 
-## Implementation Plan
+![Reachable CI autoremediation flow](docs/remediation-flow.svg)
 
-1. Keep the fixture Go-centric and dependency-light: one `cmd/server` entrypoint
-   with handlers in `internal/handlers`.
-2. Model one reachable case for each major signal family:
-   CVE, CWE, secret, config, DLP, AI/LLM misuse, malware/suspicious behavior.
-3. Include comparison cases for `UNKNOWN` / assess, defended findings, and a
-   no-fix CVE with a documented compensating control.
-4. Track dependency-upgrade expectations in `go.mod`, `go.sum`, and the
-   customer-facing baseline manifest in `EXPECTED.md` so scanner regressions
-   can be diffed without guessing.
-5. Keep all secrets and DLP data synthetic.
+## What This Demo Proves
+
+This repository is the compact Go demo for the Reachable remediation workflow:
+
+1. Reachable scans the repository and records database-backed signal truth.
+2. Reachable generates a bounded remediation prompt bundle.
+3. A selected coding agent applies one or more serialized fix batches.
+4. CI runs tests, rescans, audits, and verifies integrity.
+5. CI opens one reviewable `reachable-remediate-*` branch and pull request.
+
+The process is intentionally branch-first. The safe default is scan-only:
+`remediate=false` means CI will not edit code.
+
+## Expected Results
+
+The customer-facing baseline manifest lives in [EXPECTED.md](EXPECTED.md). The
+static demo page lives in [docs/expected-results.html](docs/expected-results.html).
+
+Current golden baseline:
+
+| Result | Expected |
+|--------|----------|
+| Raw signals | 25 |
+| Actionable before remediation | 22 |
+| Families | CVE, CWE, secret, DLP, AI |
+| Actionable after remediation | 0 |
+| Residual post-fix findings | Filtered `NOT_REACHABLE` synthetic secret markers only |
 
 ## Layout
 
 ```text
 cmd/server/              HTTP entrypoint and route registration
 internal/handlers/       Reachable, defended, and assess signal cases
-internal/safety/         Small guard helpers used by defended cases
+internal/safety/         Guard helpers used by defended cases
 config/                  Synthetic insecure configuration cases
-deploy/                  Synthetic IaC cases for config scanners
+deploy/                  Synthetic IaC cases
 testdata/dlp/            Synthetic DLP corpus
-EXPECTED.md              Customer-facing baseline manifest of expected findings
+docs/remediation-flow.svg High-level customer-safe process diagram
+EXPECTED.md              Customer-facing baseline manifest
+.github/workflows/       Drop-in remediation workflow template
+ci/run-agent.sh          Agent executor shim used by CI and local tests
 ```
 
 ## Local Smoke Test
@@ -40,164 +60,170 @@ go run ./cmd/server
 
 The service listens on `:8080` by default.
 
-## GitHub Actions Remediation Demo
+## Local Remediation Harness
 
-This repository is the compact Go demo for the Reachable CI remediation story:
-
-1. Reachable scans the target branch and writes `repo.db`.
-2. Reachable generates `.reachable/remediation-bundle/` from database-backed
-   signal truth.
-3. A selected coding agent applies one bounded remediation batch.
-4. CI runs `go test`, rescans, audits, and proves the branch is clean.
-5. The workflow pushes one reviewable branch named
-   `reachable-remediate-<run-id>`.
-
-The scanner and proof steps are the same for every agent. Only the executor
-step changes.
-
-### Workflow Configuration
-
-Recommended manual inputs:
-
-```yaml
-workflow_dispatch:
-  inputs:
-    agent:
-      description: "Coding agent executor"
-      type: choice
-      default: claude
-      options:
-        - claude
-        - codex
-        - opencode
-    remediate:
-      description: "Allow CI to create code changes"
-      type: boolean
-      default: false
-    rescan_only:
-      description: "Only prove an existing remediation branch"
-      type: boolean
-      default: false
-    target_branch:
-      description: "Base branch, or existing remediation branch for rescan_only"
-      type: string
-      default: main
-    max_batches:
-      description: "Maximum serialized remediation batches"
-      type: number
-      default: 1
-```
-
-Recommended secrets:
-
-```yaml
-env:
-  REACHABLE_API_KEY: ${{ secrets.REACHABLE_API_KEY }}
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  MCP_GITHUB_TOKEN: ${{ secrets.MCP_GITHUB_TOKEN }}
-
-  OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-  GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-  DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-  MOONSHOT_API_KEY: ${{ secrets.MOONSHOT_API_KEY }}
-
-  CODEX_API_KEY: ${{ secrets.CODEX_API_KEY }}
-  CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-  OPENCODE_AUTH: ${{ secrets.OPENCODE_AUTH }}
-```
-
-Token roles:
-
-- `GITHUB_TOKEN`: branch, commit, PR, SARIF/code-scanning, and GitHub REST
-  access.
-- `MCP_GITHUB_TOKEN`: fine-grained GitHub token for MCP-based agent access.
-- `REACHABLE_API_KEY`: optional Reachable cloud publish / org attach.
-- LLM keys: Reachable scan/enrichment providers and, depending on the selected
-  agent action, coding-agent model provider auth.
-
-### Job Shape
-
-```yaml
-permissions:
-  contents: write
-  pull-requests: write
-  security-events: write
-
-jobs:
-  reachable-remediate:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.target_branch }}
-
-      - name: Install Reachable
-        run: |
-          curl -fsSL https://get.reachable.security/install.sh | bash -s -- --ci --no-vibe
-          echo "$HOME/.reachable/venv/bin" >> "$GITHUB_PATH"
-
-      - name: Baseline scan
-        run: reachctl scan . --ci --sarif reachable.sarif
-
-      - name: Stop if remediation is disabled
-        if: ${{ !inputs.remediate || inputs.rescan_only }}
-        run: |
-          go test ./...
-          reachctl audit --latest --summary
-          reachctl integrity --latest
-
-      - name: Create remediation branch
-        if: ${{ inputs.remediate && !inputs.rescan_only }}
-        run: |
-          BRANCH="reachable-remediate-${GITHUB_RUN_ID}"
-          git switch -c "$BRANCH"
-          echo "REACHABLE_REMEDIATION_BRANCH=$BRANCH" >> "$GITHUB_ENV"
-
-      - name: Generate Reachable prompt bundle
-        if: ${{ inputs.remediate && !inputs.rescan_only }}
-        run: |
-          reachctl vibe prompt \
-            --workspace . \
-            --agent "${{ inputs.agent }}" \
-            --branch-name "$REACHABLE_REMEDIATION_BRANCH" \
-            --all
-
-      - name: Install selected coding agent
-        if: ${{ inputs.remediate && !inputs.rescan_only }}
-        run: |
-          case "${{ inputs.agent }}" in
-            claude) npm install -g @anthropic-ai/claude-code ;;
-            codex) npm install -g @openai/codex ;;
-            opencode) npm install -g opencode-ai ;;
-          esac
-
-      - name: Run selected coding agent
-        if: ${{ inputs.remediate && !inputs.rescan_only }}
-        run: ./ci/run-agent.sh "${{ inputs.agent }}" .reachable/remediation-bundle/prompt.md
-
-      - name: Prove remediation
-        if: ${{ inputs.remediate || inputs.rescan_only }}
-        run: |
-          go test ./...
-          reachctl scan . --ci --sarif reachable-after.sarif
-          reachctl audit --latest --summary
-          reachctl integrity --latest
-```
-
-`remediate=false` is the safe default. It proves the scanner output without
-allowing CI to edit code. Set `remediate=true` only when you want the workflow
-to create a remediation branch and run the selected coding agent.
-
-For larger repositories, run serialized batches:
+Agentic remediation is not a `reachctl scan` flag. The scan remains the
+source-of-truth proof step. Batch remediation is:
 
 ```text
-scan -> select batch -> write prompt/audit -> run agent -> test -> rescan -> next batch
+reachctl scan -> reachctl remediate -> coding agent -> test -> reachctl scan -> audit/integrity
 ```
 
-Do not send an unbounded backlog to a single prompt.
+`reachctl vibe remediate` is the continuous local vibe-coding daemon loop. The
+workflow in this repository is different: it is a one-branch CI/manual
+remediation loop that generates a prompt bundle and invokes the selected agent
+explicitly.
 
-The checked-in workflow lives at
-`.github/workflows/reachable-remediate.yml`; the only agent-specific shim is
-`ci/run-agent.sh`.
+Run a scan-only baseline and prompt-bundle check:
+
+```bash
+cd /Users/alaindazzi/src/reach-core
+scripts/reach-testbed-go-agent-loop.sh \
+  --fixture /Users/alaindazzi/src/reach-testbed-go \
+  --base-branch main \
+  --branch reachable-remediate-demo-$(date +%Y%m%d%H%M%S)
+```
+
+Run Codex end to end:
+
+```bash
+cd /Users/alaindazzi/src/reach-core
+scripts/reach-testbed-go-agent-loop.sh \
+  --fixture /Users/alaindazzi/src/reach-testbed-go \
+  --base-branch main \
+  --branch reachable-remediate-codex-$(date +%Y%m%d%H%M%S) \
+  --agent codex \
+  --run-agent \
+  --prove
+```
+
+Run OpenCode end to end:
+
+```bash
+cd /Users/alaindazzi/src/reach-core
+OPENCODE_MODEL=opencode/deepseek-v4-flash-free \
+scripts/reach-testbed-go-agent-loop.sh \
+  --fixture /Users/alaindazzi/src/reach-testbed-go \
+  --base-branch main \
+  --branch reachable-remediate-opencode-$(date +%Y%m%d%H%M%S) \
+  --agent opencode \
+  --run-agent \
+  --prove
+```
+
+Run Claude Code end to end:
+
+```bash
+cd /Users/alaindazzi/src/reach-core
+ANTHROPIC_API_KEY=... \
+scripts/reach-testbed-go-agent-loop.sh \
+  --fixture /Users/alaindazzi/src/reach-testbed-go \
+  --base-branch main \
+  --branch reachable-remediate-claude-$(date +%Y%m%d%H%M%S) \
+  --agent claude \
+  --run-agent \
+  --prove
+```
+
+## CI/CD Remediation Template
+
+The workflow at [.github/workflows/reachable-remediate.yml](.github/workflows/reachable-remediate.yml)
+is written as a reusable template. It is Go-ready by default, but the same shape
+works for other languages by changing `test_command`, `scan_extra_flags`, and
+the selected coding agent.
+
+Important manual inputs:
+
+| Input | Purpose |
+|-------|---------|
+| `remediate` | Main kill switch. `false` means scan-only proof and no code changes. |
+| `rescan_only` | Proves an existing branch without creating or editing a branch. |
+| `target_branch` | Base branch, or existing remediation branch when `rescan_only=true`. |
+| `agent` | Executor: `claude`, `codex`, `opencode`, or `custom`. |
+| `prompt_agent` | Prompt flavor: `auto`, `claude`, `codex`, `opencode`, `copilot`, or `generic`. |
+| `llm_provider` | Reachable scan/enrichment provider: `auto`, `openrouter`, `claude`, `openai`, or `groq`. |
+| `opencode_model` | OpenCode model slug. |
+| `prompt_profile` | Remediation profile: `safe`, `balanced`, `aggressive`, `release`, or `nightly`. |
+| `signal_types` | `all`, or a comma-separated subset such as `cve,cwe,secret`. |
+| `max_batches` | Maximum serialized remediation batches. Use this to avoid huge prompts. |
+| `test_command` | Language-specific test/build command. Defaults to `go test ./...`. |
+| `scan_extra_flags` | Extra `reachctl scan` flags. |
+| `custom_agent_*` | Install/run commands for an agent wrapper not built into the template. |
+| `create_pr` | Open a PR after successful remediation. |
+
+Recommended GitHub secrets and variables:
+
+| Name | Used by |
+|------|---------|
+| `REACHABLE_API_KEY` | Optional Reachable cloud publish/org attach. |
+| `MCP_GITHUB_TOKEN` | MCP-based agent GitHub access. |
+| `OPENROUTER_API_KEY` | Reachable OpenRouter provider and OpenRouter-backed models. |
+| `ANTHROPIC_API_KEY` | Reachable Claude provider and Claude Code auth. |
+| `OPENAI_API_KEY` | Reachable OpenAI provider and OpenAI-backed agents. |
+| `GROQ_API_KEY` | Reachable Groq provider. |
+| `DEEPSEEK_API_KEY` | Direct DeepSeek-compatible agent/provider setups. |
+| `MOONSHOT_API_KEY` | Direct Moonshot-compatible agent/provider setups. |
+| `XAI_API_KEY` | xAI/Grok-compatible provider setups. |
+| `CODEX_API_KEY` | Codex CLI when API-key based auth is used. |
+| `CLAUDE_CODE_OAUTH_TOKEN` | Claude Code OAuth-based CI auth. |
+| `OPENCODE_AUTH` | OpenCode auth if the selected model requires it. |
+| `REACHABLE_PRIVATE_LLM_MODEL` | Optional repository/org variable for enterprise runners. |
+| `REACHABLE_PRIVATE_LLM_API_KEY` | Optional private/local model key. |
+| `ENZO_LOCAL_MODEL` | Optional local Enzo/private model variable. |
+| `ENZO_LOCAL_API_KEY` | Optional local Enzo/private model key. |
+
+`GITHUB_TOKEN` is provided by GitHub Actions. The workflow grants it write
+access to contents, pull requests, and security events so it can push the
+remediation branch, open a PR, and upload SARIF.
+
+### CI Cache
+
+The workflow restores and saves Reachable state with `actions/cache@v4`:
+
+```text
+~/.reachable/cache
+~/.reachable/scans
+~/.reachable/tools
+```
+
+The Actions log prints `Reachable cache active` before the baseline scan. A
+warm run says `warm cache restored`; the first run says `cold start` and then
+populates the cache for the next run. This keeps repeat CI scans fast by
+preserving scanner databases, package/source caches, repo scan state, and
+Reachable tool downloads.
+
+## Agent Strategy
+
+Reachable owns scanning, ranking, prompt-bundle generation, audit artifacts, and
+post-fix proof. The selected coding agent only consumes `prompt.md` and edits
+the current branch.
+
+Supported CI executor modes:
+
+| Agent | Install path in template | Notes |
+|-------|--------------------------|-------|
+| Claude Code | `npm install -g @anthropic-ai/claude-code` | Best default for GitHub-hosted CI when auth is configured. |
+| Codex | `npm install -g @openai/codex` | Uses `codex exec` in non-interactive mode. |
+| OpenCode | `npm install -g opencode-ai` | Use `opencode_model` to choose the model. |
+| Custom | User-supplied install/run command | For wrappers, GitHub Actions, or future agents. |
+
+Cursor is supported as a local MCP target, but it is not a GitHub-hosted CI
+executor in this template.
+
+## No-Fix CVEs
+
+When Reachable reports a reachable CVE with no fixed version, the generated
+prompt tells the agent not to invent a dependency upgrade. The agent must add a
+compensating control when possible, such as validation, gating, isolation,
+timeouts, or explicit accepted-risk documentation.
+
+## CI Dry Run
+
+Before enabling remediation:
+
+1. Add the secrets above.
+2. Run the workflow with `remediate=false`.
+3. Confirm baseline SARIF and audit artifacts upload.
+4. Run with `remediate=true`, `agent=claude` or `agent=opencode`, and
+   `max_batches=1`.
+5. Review the generated `reachable-remediate-*` pull request.

@@ -9,6 +9,7 @@ Supported AGENT values:
   claude    Run Claude Code non-interactively.
   codex     Run Codex CLI non-interactively.
   opencode  Run OpenCode non-interactively when installed.
+  custom    Run REACHABLE_AGENT_RUN_COMMAND with PROMPT_PATH in the environment.
 
 The script is intentionally thin. Reachable owns scan, bundle generation,
 audit artifacts, and proof. The selected coding agent only consumes prompt.md
@@ -69,6 +70,14 @@ case "$AGENT" in
       opencode_args+=(--agent "$OPENCODE_AGENT")
     fi
     opencode "${opencode_args[@]}" "$(cat "$PROMPT_PATH")"
+    ;;
+
+  custom)
+    if [[ -z "${REACHABLE_AGENT_RUN_COMMAND:-}" ]]; then
+      echo "REACHABLE_AGENT_RUN_COMMAND is required when AGENT=custom." >&2
+      exit 2
+    fi
+    PROMPT_PATH="$PROMPT_PATH" bash -lc "$REACHABLE_AGENT_RUN_COMMAND"
     ;;
 
   *)

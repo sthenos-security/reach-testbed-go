@@ -1,8 +1,20 @@
-name: Reachable Remediation Demo
+name: Reachable Remediation Template
 
 on:
   workflow_dispatch:
     inputs:
+      remediate:
+        description: "Kill switch: allow CI to change code and open a remediation PR"
+        type: boolean
+        default: false
+      rescan_only:
+        description: "Only prove the selected branch; do not create or edit a branch"
+        type: boolean
+        default: false
+      target_branch:
+        description: "Base branch, or existing remediation branch for rescan_only"
+        type: string
+        default: main
       agent:
         description: "Coding agent executor"
         type: choice
@@ -11,44 +23,121 @@ on:
           - claude
           - codex
           - opencode
-      remediate:
-        description: "Allow CI to create code changes"
-        type: boolean
-        default: false
-      rescan_only:
-        description: "Only prove an existing reachable-remediate-* branch"
-        type: boolean
-        default: false
-      target_branch:
-        description: "Base branch, or existing remediation branch for rescan_only"
+          - custom
+      prompt_agent:
+        description: "Prompt flavor emitted by Reachable"
+        type: choice
+        default: auto
+        options:
+          - auto
+          - claude
+          - codex
+          - opencode
+          - copilot
+          - generic
+      llm_provider:
+        description: "Reachable scan/enrichment provider"
+        type: choice
+        default: auto
+        options:
+          - auto
+          - openrouter
+          - claude
+          - openai
+          - groq
+      opencode_model:
+        description: "OpenCode model slug, when agent=opencode"
         type: string
-        default: main
+        default: opencode/deepseek-v4-flash-free
+      prompt_profile:
+        description: "Reachable remediation bundling profile"
+        type: choice
+        default: balanced
+        options:
+          - safe
+          - balanced
+          - aggressive
+          - release
+          - nightly
+      signal_types:
+        description: "Comma-separated signal families, or all"
+        type: string
+        default: all
       max_batches:
         description: "Maximum serialized remediation batches"
         type: number
         default: 1
+      test_command:
+        description: "Repository test/build command"
+        type: string
+        default: go test ./...
+      scan_extra_flags:
+        description: "Extra reachctl scan flags"
+        type: string
+        default: ""
+      custom_agent_install_command:
+        description: "Optional install command when agent=custom"
+        type: string
+        default: ""
+      custom_agent_run_command:
+        description: "Required run command when agent=custom; receives PROMPT_PATH"
+        type: string
+        default: ""
+      create_pr:
+        description: "Open a pull request after successful remediation"
+        type: boolean
+        default: true
 
 permissions:
   contents: write
   pull-requests: write
   security-events: write
+  actions: read
 
 jobs:
   reachable-remediate:
     runs-on: ubuntu-latest
     env:
+      REACHABLE_REMEDIATE_ENABLED: ${{ inputs.remediate }}
+      REACHABLE_RESCAN_ONLY: ${{ inputs.rescan_only }}
+      REACHABLE_AGENT: ${{ inputs.agent }}
+      REACHABLE_PROMPT_AGENT: ${{ inputs.prompt_agent }}
+      REACHABLE_LLM_PROVIDER: ${{ inputs.llm_provider }}
+      REACHABLE_PROMPT_PROFILE: ${{ inputs.prompt_profile }}
+      REACHABLE_SIGNAL_TYPES: ${{ inputs.signal_types }}
+      REACHABLE_MAX_BATCHES: ${{ inputs.max_batches }}
+      REACHABLE_TEST_COMMAND: ${{ inputs.test_command }}
+      REACHABLE_SCAN_EXTRA_FLAGS: ${{ inputs.scan_extra_flags }}
+      REACHABLE_CUSTOM_AGENT_INSTALL_COMMAND: ${{ inputs.custom_agent_install_command }}
+      REACHABLE_AGENT_RUN_COMMAND: ${{ inputs.custom_agent_run_command }}
+      OPENCODE_MODEL: ${{ inputs.opencode_model }}
+
+      # Reachable + GitHub integration tokens.
       REACHABLE_API_KEY: ${{ secrets.REACHABLE_API_KEY }}
+      GITHUB_TOKEN: ${{ github.token }}
+      GH_TOKEN: ${{ github.token }}
       MCP_GITHUB_TOKEN: ${{ secrets.MCP_GITHUB_TOKEN }}
+
+      # Reachable scan/enrichment LLM providers.
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
       DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
       MOONSHOT_API_KEY: ${{ secrets.MOONSHOT_API_KEY }}
+      XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+
+      # Private/local model support for enterprise runners.
+      REACHABLE_PRIVATE_LLM_MODEL: ${{ vars.REACHABLE_PRIVATE_LLM_MODEL }}
+      REACHABLE_PRIVATE_LLM_API_KEY: ${{ secrets.REACHABLE_PRIVATE_LLM_API_KEY }}
+      REACHABLE_PRIVATE_LLM_API_KEY_CREDENTIAL: ${{ secrets.REACHABLE_PRIVATE_LLM_API_KEY_CREDENTIAL }}
+      ENZO_LOCAL_API_KEY: ${{ secrets.ENZO_LOCAL_API_KEY }}
+      ENZO_LOCAL_MODEL: ${{ vars.ENZO_LOCAL_MODEL }}
+
+      # Coding-agent auth. Agents may also use their own persisted runner login.
       CODEX_API_KEY: ${{ secrets.CODEX_API_KEY }}
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
       OPENCODE_AUTH: ${{ secrets.OPENCODE_AUTH }}
-      REACHABLE_MAX_BATCHES: ${{ inputs.max_batches }}
 
     steps:
       - uses: actions/checkout@v4
@@ -56,29 +145,92 @@ jobs:
           ref: ${{ inputs.target_branch }}
 
       - uses: actions/setup-go@v5
+        if: ${{ hashFiles('go.mod') != '' }}
         with:
           go-version-file: go.mod
 
+      - uses: actions/setup-node@v4
+        if: ${{ inputs.remediate && !inputs.rescan_only }}
+        with:
+          node-version: "22"
+
+      - name: Prepare Reachable cache directories
+        run: |
+          mkdir -p "$HOME/.reachable/cache" "$HOME/.reachable/scans" "$HOME/.reachable/tools"
+
+      - name: Restore Reachable cache
+        id: reachable-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.reachable/cache
+            ~/.reachable/scans
+            ~/.reachable/tools
+          key: reachable-${{ runner.os }}-${{ github.repository_id }}-${{ hashFiles('**/go.sum', '**/go.mod', '**/package-lock.json', '**/pnpm-lock.yaml', '**/yarn.lock', '**/requirements*.txt', '**/poetry.lock', '**/uv.lock', '**/Pipfile.lock', '**/Cargo.lock', '**/Gemfile.lock', '**/pom.xml', '**/build.gradle*', '**/*.csproj') }}
+          restore-keys: |
+            reachable-${{ runner.os }}-${{ github.repository_id }}-
+            reachable-${{ runner.os }}-
+
+      - name: Reachable cache status
+        run: |
+          echo "Repository telemetry:"
+          echo "  tracked files: $(git ls-files | wc -l | xargs)"
+          echo "  checkout size: $(du -sh . | awk '{print $1}')"
+          if [ "${{ steps.reachable-cache.outputs.cache-hit }}" = "true" ]; then
+            echo "Reachable cache active: warm cache restored from GitHub Actions cache."
+          else
+            echo "Reachable cache active: cold start; this run will populate GitHub Actions cache."
+          fi
+          du -sh "$HOME/.reachable/cache" "$HOME/.reachable/scans" "$HOME/.reachable/tools" 2>/dev/null || true
+
       - name: Install Reachable
         run: |
-          curl -fsSL https://get.reachable.security/install.sh | bash -s -- --ci --no-vibe
-          echo "$HOME/.reachable/venv/bin" >> "$GITHUB_PATH"
+          if command -v reachctl >/dev/null 2>&1; then
+            reachctl --version
+          else
+            curl -fsSL https://get.reachable.security/install.sh | bash -s -- --ci --no-vibe
+            echo "$HOME/.reachable/venv/bin" >> "$GITHUB_PATH"
+          fi
+
+      - name: Reachable LOC telemetry
+        run: reachctl loc .
 
       - name: Baseline scan
-        run: reachctl scan . --ci --sarif reachable.sarif
+        run: |
+          mkdir -p .reachable/ci-artifacts
+          scan_start="$(date +%s)"
+          provider_args=()
+          if [ "$REACHABLE_LLM_PROVIDER" != "auto" ]; then
+            provider_args+=(--ai-provider "$REACHABLE_LLM_PROVIDER")
+          fi
+          # shellcheck disable=SC2206
+          extra_args=($REACHABLE_SCAN_EXTRA_FLAGS)
+          reachctl scan . --ci --sarif .reachable/ci-artifacts/reachable.sarif "${provider_args[@]}" "${extra_args[@]}"
+          scan_end="$(date +%s)"
+          echo "Reachable baseline scan duration: $((scan_end - scan_start))s"
+          du -sh .reachable/ci-artifacts 2>/dev/null || true
+
+      - name: Reachable cache populated
+        if: always()
+        run: |
+          echo "Reachable cache active: post-scan cache/scans/tool state below."
+          du -sh "$HOME/.reachable/cache" "$HOME/.reachable/scans" "$HOME/.reachable/tools" 2>/dev/null || true
 
       - name: Upload baseline artifacts
         uses: actions/upload-artifact@v4
         with:
           name: reachable-baseline
+          if-no-files-found: ignore
           path: |
-            reachable.sarif
+            .reachable/ci-artifacts/**
             .reachable/remediation-bundle/**
 
-      - name: Stop if remediation is disabled
-        if: ${{ !inputs.remediate && !inputs.rescan_only }}
+      - name: Prove without remediation
+        if: ${{ !inputs.remediate || inputs.rescan_only }}
         run: |
-          go test ./...
+          if [ -n "$REACHABLE_TEST_COMMAND" ]; then
+            bash -lc "$REACHABLE_TEST_COMMAND"
+          fi
           reachctl audit --latest --summary
           reachctl integrity --latest
 
@@ -91,19 +243,10 @@ jobs:
           git switch -c "$BRANCH"
           echo "REACHABLE_REMEDIATION_BRANCH=$BRANCH" >> "$GITHUB_ENV"
 
-      - name: Generate Reachable prompt bundle
-        if: ${{ inputs.remediate && !inputs.rescan_only }}
-        run: |
-          reachctl vibe prompt \
-            --workspace . \
-            --agent "${{ inputs.agent }}" \
-            --branch-name "$REACHABLE_REMEDIATION_BRANCH" \
-            --all
-
       - name: Install selected coding agent
         if: ${{ inputs.remediate && !inputs.rescan_only }}
         run: |
-          case "${{ inputs.agent }}" in
+          case "$REACHABLE_AGENT" in
             claude)
               npm install -g @anthropic-ai/claude-code
               claude --version
@@ -116,52 +259,120 @@ jobs:
               npm install -g opencode-ai
               opencode --version
               ;;
+            custom)
+              if [ -n "$REACHABLE_CUSTOM_AGENT_INSTALL_COMMAND" ]; then
+                bash -lc "$REACHABLE_CUSTOM_AGENT_INSTALL_COMMAND"
+              fi
+              ;;
             *)
-              echo "unsupported agent: ${{ inputs.agent }}" >&2
+              echo "unsupported agent: $REACHABLE_AGENT" >&2
               exit 2
               ;;
           esac
 
-      - name: Run selected coding agent
+      - name: Remediate in bounded batches
         if: ${{ inputs.remediate && !inputs.rescan_only }}
-        run: ./ci/run-agent.sh "${{ inputs.agent }}" .reachable/remediation-bundle/prompt.md
-
-      - name: Prove remediation
-        if: ${{ inputs.remediate || inputs.rescan_only }}
         run: |
-          go test ./...
-          reachctl scan . --ci --sarif reachable-after.sarif
-          reachctl audit --latest --summary
-          reachctl integrity --latest
+          max_batches="${REACHABLE_MAX_BATCHES:-1}"
+          if [ "$max_batches" -lt 1 ]; then
+            echo "REACHABLE_MAX_BATCHES must be >= 1" >&2
+            exit 2
+          fi
+
+          prompt_agent="$REACHABLE_PROMPT_AGENT"
+          if [ "$prompt_agent" = "auto" ]; then
+            case "$REACHABLE_AGENT" in
+              claude|codex|opencode) prompt_agent="$REACHABLE_AGENT" ;;
+              *) prompt_agent="generic" ;;
+            esac
+          fi
+
+          provider_args=()
+          if [ "$REACHABLE_LLM_PROVIDER" != "auto" ]; then
+            provider_args+=(--ai-provider "$REACHABLE_LLM_PROVIDER")
+          fi
+          # shellcheck disable=SC2206
+          extra_args=($REACHABLE_SCAN_EXTRA_FLAGS)
+
+          for batch in $(seq 1 "$max_batches"); do
+            echo "== Reachable remediation batch $batch/$max_batches =="
+            rm -rf .reachable/remediation-bundle
+
+            signal_args=()
+            if [ "$REACHABLE_SIGNAL_TYPES" = "all" ]; then
+              signal_args+=(--all)
+            else
+              IFS=',' read -ra families <<< "$REACHABLE_SIGNAL_TYPES"
+              for family in "${families[@]}"; do
+                family="$(echo "$family" | xargs)"
+                if [ -n "$family" ]; then
+                  signal_args+=(--signal-type "$family")
+                fi
+              done
+            fi
+
+            reachctl remediate \
+              --workspace . \
+              --agent "$prompt_agent" \
+              --branch-name "$REACHABLE_REMEDIATION_BRANCH" \
+              --profile "$REACHABLE_PROMPT_PROFILE" \
+              "${signal_args[@]}"
+
+            selected_rules="$(python -c "import json; from pathlib import Path; p=Path('.reachable/remediation-bundle/bundle.json'); d=json.loads(p.read_text(encoding='utf-8')) if p.exists() else {}; print(int(d.get('selected_rule_count') or len(d.get('selected_rules') or [])))")"
+            if [ "$selected_rules" -le 0 ]; then
+              echo "Reachable generated no remediation rules; stopping."
+              break
+            fi
+
+            ./ci/run-agent.sh "$REACHABLE_AGENT" .reachable/remediation-bundle/prompt.md
+
+            if [ -n "$REACHABLE_TEST_COMMAND" ]; then
+              test_start="$(date +%s)"
+              bash -lc "$REACHABLE_TEST_COMMAND"
+              test_end="$(date +%s)"
+              echo "Repository test duration: $((test_end - test_start))s"
+            fi
+
+            batch_scan_start="$(date +%s)"
+            reachctl scan . --ci --sarif ".reachable/ci-artifacts/reachable-after-batch-${batch}.sarif" "${provider_args[@]}" "${extra_args[@]}"
+            batch_scan_end="$(date +%s)"
+            echo "Reachable proof scan duration for batch $batch: $((batch_scan_end - batch_scan_start))s"
+            reachctl audit --latest --summary
+            reachctl integrity --latest
+
+            if [ -z "$(git status --porcelain -- . ':!.reachable/**' ':!reachable*.sarif')" ]; then
+              echo "No workspace changes after batch $batch; stopping."
+              break
+            fi
+          done
 
       - name: Commit remediation branch
         if: ${{ inputs.remediate && !inputs.rescan_only }}
         run: |
-          if git diff --quiet; then
+          if git diff --quiet && git diff --cached --quiet; then
             echo "No remediation changes produced."
             exit 1
           fi
-          git add -A
+          git add -A -- . ':!.reachable/**' ':!reachable*.sarif'
           git commit -m "fix: reachable remediation batch"
           git push origin "$REACHABLE_REMEDIATION_BRANCH"
 
       - name: Open remediation PR
-        if: ${{ inputs.remediate && !inputs.rescan_only }}
-        env:
-          GH_TOKEN: ${{ github.token }}
+        if: ${{ inputs.remediate && !inputs.rescan_only && inputs.create_pr }}
         run: |
           gh pr create \
             --base "${{ inputs.target_branch }}" \
             --head "$REACHABLE_REMEDIATION_BRANCH" \
             --title "Reachable remediation demo" \
-            --body "Automated Reachable remediation proof branch."
+            --body "Automated Reachable remediation proof branch. CI scanned, generated a database-backed prompt bundle, ran the selected coding agent, tested, rescanned, audited, and verified integrity."
 
       - name: Upload remediation artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: reachable-remediation-artifacts
+          if-no-files-found: ignore
           path: |
-            reachable*.sarif
+            .reachable/ci-artifacts/**
             .reachable/remediation-bundle/**
             .reachable/vibe-scenarios/workspace-remediation/**
