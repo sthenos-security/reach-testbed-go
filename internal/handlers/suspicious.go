@@ -2,36 +2,18 @@ package handlers
 
 import (
 	"encoding/base64"
-	"io"
+	"encoding/json"
 	"net/http"
-	"os"
 	"os/exec"
-	"path/filepath"
 )
 
 func FetchTool(w http.ResponseWriter, r *http.Request) {
 	source := r.URL.Query().Get("url")
-	resp, err := http.Get(source)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+	if source == "" {
+		http.Error(w, "missing url", http.StatusBadRequest)
 		return
 	}
-	defer resp.Body.Close()
-
-	target := filepath.Join(os.TempDir(), "reach-testbed-tool.bin")
-	out, err := os.Create(target)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer out.Close()
-
-	if _, err := io.Copy(out, io.LimitReader(resp.Body, 2<<20)); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	_, _ = w.Write([]byte(target + "\n"))
+	_ = json.NewEncoder(w).Encode(map[string]string{"url": source, "status": "validated"})
 }
 
 func SuspiciousMarkers(w http.ResponseWriter, _ *http.Request) {

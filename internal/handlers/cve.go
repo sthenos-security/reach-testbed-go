@@ -13,13 +13,13 @@ import (
 func ParseYAML(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 
 	var decoded map[string]any
 	if err := yaml.Unmarshal(body, &decoded); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 
@@ -35,7 +35,7 @@ func ParseLanguage(w http.ResponseWriter, r *http.Request) {
 
 	parsed, err := language.Parse(tag)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, "parse error", http.StatusBadRequest)
 		return
 	}
 
