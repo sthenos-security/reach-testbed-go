@@ -246,7 +246,7 @@ jobs:
           if [ -n "$REACHABLE_TEST_COMMAND" ]; then
             bash -lc "$REACHABLE_TEST_COMMAND"
           fi
-          latest_scan_path="$(find "$HOME/.reachable/scans" -path '*/main/20*' -type d | sort | tail -n 1)"
+          latest_scan_path="$(find "$HOME/.reachable/scans" -mindepth 4 -maxdepth 4 -type d -name '20*' | sort | tail -n 1)"
           if [ -z "$latest_scan_path" ]; then
             echo "No Reachable scan session found under ~/.reachable/scans." >&2
             exit 2
@@ -359,7 +359,7 @@ jobs:
             reachctl scan . --ci --sarif ".reachable/ci-artifacts/reachable-after-batch-${batch}.sarif" "${provider_args[@]}" "${extra_args[@]}"
             batch_scan_end="$(date +%s)"
             echo "Reachable proof scan duration for batch $batch: $((batch_scan_end - batch_scan_start))s"
-            latest_scan_path="$(find "$HOME/.reachable/scans" -path '*/main/20*' -type d | sort | tail -n 1)"
+            latest_scan_path="$(find "$HOME/.reachable/scans" -mindepth 4 -maxdepth 4 -type d -name '20*' | sort | tail -n 1)"
             if [ -z "$latest_scan_path" ]; then
               echo "No Reachable scan session found under ~/.reachable/scans." >&2
               exit 2
