@@ -302,6 +302,7 @@ jobs:
       - name: Remediate in bounded batches
         if: ${{ inputs.remediate && !inputs.rescan_only }}
         run: |
+          set -o pipefail
           export PATH="$HOME/.reachable/venv/bin:$HOME/.reachable/tools/bin:$PATH"
           max_batches="${REACHABLE_MAX_BATCHES:-1}"
           if [ "$max_batches" -lt 1 ]; then
@@ -354,7 +355,17 @@ jobs:
               break
             fi
 
-            ./ci/run-agent.sh "$REACHABLE_AGENT" .reachable/remediation-bundle/prompt.md
+            agent_log=".reachable/ci-artifacts/agent-batch-${batch}.log"
+            set +e
+            ./ci/run-agent.sh "$REACHABLE_AGENT" .reachable/remediation-bundle/prompt.md 2>&1 \
+              | sed -u 's/##\[/# [/g' \
+              | tee "$agent_log"
+            agent_status="${PIPESTATUS[0]}"
+            set -e
+            if [ "$agent_status" -ne 0 ]; then
+              echo "Coding agent failed for batch $batch with exit code $agent_status." >&2
+              exit "$agent_status"
+            fi
 
             if [ -n "$REACHABLE_TEST_COMMAND" ]; then
               test_start="$(date +%s)"
@@ -376,7 +387,7 @@ jobs:
             reachctl audit --scan-path "$latest_scan_path" --summary
             reachctl integrity --scan-path "$latest_scan_path"
 
-            if [ -z "$(git status --porcelain -- . ':!.reachable/**' ':!reachable*.sarif')" ]; then
+            if [ -z "$(git status --porcelain -- . ':(exclude).reachable' ':(exclude).reachable/**' ':(exclude)reachable*.sarif')" ]; then
               echo "No workspace changes after batch $batch; stopping."
               break
             fi
@@ -385,11 +396,18 @@ jobs:
       - name: Commit remediation branch
         if: ${{ inputs.remediate && !inputs.rescan_only }}
         run: |
-          if git diff --quiet && git diff --cached --quiet; then
+          changes="$(git status --porcelain -- . ':(exclude).reachable' ':(exclude).reachable/**' ':(exclude)reachable*.sarif')"
+          if [ -z "$changes" ]; then
             echo "No remediation changes produced."
             exit 1
           fi
-          git add -A -- . ':!.reachable/**' ':!reachable*.sarif'
+          echo "Remediation changes:"
+          printf '%s\n' "$changes"
+          git add -A -- . ':(exclude).reachable' ':(exclude).reachable/**' ':(exclude)reachable*.sarif'
+          if git diff --cached --quiet; then
+            echo "No committable remediation changes after exclusions."
+            exit 1
+          fi
           git commit -m "fix: reachable remediation batch"
           git push origin "$REACHABLE_REMEDIATION_BRANCH"
 
