@@ -15,38 +15,17 @@ on:
         description: "Base branch, or existing remediation branch for rescan_only"
         type: string
         default: main
-      agent:
-        description: "Coding agent executor"
+      remediation_mode:
+        description: "One-key remediation mode"
         type: choice
-        default: claude
+        default: codex-openai
         options:
-          - claude
-          - codex
+          - codex-openai
+          - claude-anthropic
           - opencode
           - custom
-      prompt_agent:
-        description: "Prompt flavor emitted by Reachable"
-        type: choice
-        default: auto
-        options:
-          - auto
-          - claude
-          - codex
-          - opencode
-          - copilot
-          - generic
-      llm_provider:
-        description: "Reachable scan/enrichment provider"
-        type: choice
-        default: auto
-        options:
-          - auto
-          - openrouter
-          - claude
-          - openai
-          - groq
       opencode_model:
-        description: "OpenCode model slug, when agent=opencode"
+        description: "OpenCode model slug, when remediation_mode=opencode"
         type: string
         default: opencode/deepseek-v4-flash-free
       prompt_profile:
@@ -102,9 +81,10 @@ jobs:
       REACHABLE_VERSION: ${{ vars.REACHABLE_VERSION || '' }}
       REACHABLE_REMEDIATE_ENABLED: ${{ inputs.remediate }}
       REACHABLE_RESCAN_ONLY: ${{ inputs.rescan_only }}
-      REACHABLE_AGENT: ${{ inputs.agent }}
-      REACHABLE_PROMPT_AGENT: ${{ inputs.prompt_agent }}
-      REACHABLE_LLM_PROVIDER: ${{ inputs.llm_provider }}
+      REACHABLE_REMEDIATION_MODE: ${{ inputs.remediation_mode }}
+      REACHABLE_AGENT: ""
+      REACHABLE_PROMPT_AGENT: ""
+      REACHABLE_LLM_PROVIDER: auto
       REACHABLE_PROMPT_PROFILE: ${{ inputs.prompt_profile }}
       REACHABLE_SIGNAL_TYPES: ${{ inputs.signal_types }}
       REACHABLE_MAX_BATCHES: ${{ inputs.max_batches }}
@@ -186,10 +166,76 @@ jobs:
 
       - name: Normalize provider secrets
         run: |
+          if [ -z "${OPENAI_API_KEY:-}" ] && [ -n "${CODEX_API_KEY:-}" ]; then
+            echo "OPENAI_API_KEY=$CODEX_API_KEY" >> "$GITHUB_ENV"
+            echo "Mapped CODEX_API_KEY alias to OPENAI_API_KEY for Codex/OpenAI mode."
+          fi
           if [ -z "${GROQ_API_KEY:-}" ] && [ -n "${GROK_API_KEY:-}" ]; then
             echo "GROQ_API_KEY=$GROK_API_KEY" >> "$GITHUB_ENV"
             echo "Mapped legacy GROK_API_KEY secret to GROQ_API_KEY for Reachable."
           fi
+
+      - name: Resolve remediation mode
+        run: |
+          set -euo pipefail
+          mode="${REACHABLE_REMEDIATION_MODE:-codex-openai}"
+          require_auth=0
+          if [ "${REACHABLE_REMEDIATE_ENABLED:-false}" = "true" ] && [ "${REACHABLE_RESCAN_ONLY:-false}" != "true" ]; then
+            require_auth=1
+          fi
+
+          case "$mode" in
+            codex-openai)
+              agent="codex"
+              prompt_agent="codex"
+              provider="openai"
+              if [ "$require_auth" -eq 1 ] && [ -z "${OPENAI_API_KEY:-}" ]; then
+                echo "remediation_mode=codex-openai requires one GitHub secret: OPENAI_API_KEY." >&2
+                exit 2
+              fi
+              ;;
+            claude-anthropic)
+              agent="claude"
+              prompt_agent="claude"
+              provider="claude"
+              if [ "$require_auth" -eq 1 ] && [ -z "${ANTHROPIC_API_KEY:-}" ]; then
+                echo "remediation_mode=claude-anthropic requires one GitHub secret: ANTHROPIC_API_KEY." >&2
+                exit 2
+              fi
+              ;;
+            opencode)
+              agent="opencode"
+              prompt_agent="opencode"
+              provider="auto"
+              if [ "$require_auth" -eq 1 ] && [ -z "${OPENCODE_AUTH:-}" ]; then
+                echo "remediation_mode=opencode selected without OPENCODE_AUTH; continuing because some OpenCode models support unauthenticated CI use." >&2
+              fi
+              ;;
+            custom)
+              agent="custom"
+              prompt_agent="generic"
+              provider="auto"
+              if [ "$require_auth" -eq 1 ] && [ -z "${REACHABLE_AGENT_RUN_COMMAND:-}" ]; then
+                echo "remediation_mode=custom requires custom_agent_run_command." >&2
+                exit 2
+              fi
+              ;;
+            *)
+              echo "unsupported remediation_mode: $mode" >&2
+              exit 2
+              ;;
+          esac
+
+          {
+            echo "REACHABLE_AGENT=$agent"
+            echo "REACHABLE_PROMPT_AGENT=$prompt_agent"
+            echo "REACHABLE_LLM_PROVIDER=$provider"
+          } >> "$GITHUB_ENV"
+
+          echo "Reachable remediation mode: $mode"
+          echo "  coding agent: $agent"
+          echo "  prompt flavor: $prompt_agent"
+          echo "  Reachable AI provider: $provider"
 
       - name: Install Reachable
         run: |
@@ -396,14 +442,47 @@ jobs:
       - name: Commit remediation branch
         if: ${{ inputs.remediate && !inputs.rescan_only }}
         run: |
-          changes="$(git status --porcelain -- . ':(exclude).reachable' ':(exclude).reachable/**' ':(exclude)reachable*.sarif')"
-          if [ -z "$changes" ]; then
+          stage_list="${RUNNER_TEMP:-/tmp}/reachable-stage-paths"
+          python - "$stage_list" <<'PY'
+          import fnmatch
+          import subprocess
+          import sys
+
+          stage_list = sys.argv[1]
+
+          def split0(cmd):
+              raw = subprocess.check_output(cmd)
+              return [p.decode("utf-8", "surrogateescape") for p in raw.split(b"\0") if p]
+
+          def keep(path):
+              return not (
+                  path == ".reachable"
+                  or path.startswith(".reachable/")
+                  or fnmatch.fnmatch(path, "reachable*.sarif")
+                  or fnmatch.fnmatch(path.rsplit("/", 1)[-1], "reachable*.sarif")
+              )
+
+          paths = set()
+          for path in split0(["git", "diff", "--name-only", "-z", "--"]):
+              if keep(path):
+                  paths.add(path)
+          for path in split0(["git", "ls-files", "--others", "--exclude-standard", "-z", "--"]):
+              if keep(path):
+                  paths.add(path)
+
+          ordered = sorted(paths)
+          for path in ordered:
+              print(path, file=sys.stderr)
+          with open(stage_list, "wb") as fh:
+              if ordered:
+                  fh.write(b"\0".join(p.encode("utf-8", "surrogateescape") for p in ordered) + b"\0")
+          PY
+          if [ ! -s "$stage_list" ]; then
             echo "No remediation changes produced."
             exit 1
           fi
-          echo "Remediation changes:"
-          printf '%s\n' "$changes"
-          git add -A -- . ':(exclude).reachable' ':(exclude).reachable/**' ':(exclude)reachable*.sarif'
+          echo "Remediation changes listed above."
+          git add -A --pathspec-from-file="$stage_list" --pathspec-file-nul
           if git diff --cached --quiet; then
             echo "No committable remediation changes after exclusions."
             exit 1

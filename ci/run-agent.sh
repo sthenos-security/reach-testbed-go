@@ -52,6 +52,7 @@ case "$AGENT" in
     }
     codex exec \
       -s danger-full-access \
+      --ask-for-approval never \
       -C "$PWD" \
       --skip-git-repo-check \
       "$(cat "$PROMPT_PATH")"

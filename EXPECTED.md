@@ -121,6 +121,7 @@ scripts/reach-testbed-go-agent-loop.sh \
   --prove
 ```
 
-Claude Code uses the same harness with `--agent claude`; it requires a valid
-Claude Code login or `ANTHROPIC_API_KEY` / `CLAUDE_CODE_OAUTH_TOKEN` in the
-environment.
+Claude Code uses the same harness with `--agent claude`; for CI demos the
+matching one-key mode is `remediation_mode=claude-anthropic` with a single
+`ANTHROPIC_API_KEY` GitHub secret. The Codex CI demo mode is
+`remediation_mode=codex-openai` with a single `OPENAI_API_KEY` GitHub secret.

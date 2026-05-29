@@ -84,7 +84,9 @@ scripts/reach-testbed-go-agent-loop.sh \
   --branch reachable-remediate-demo-$(date +%Y%m%d%H%M%S)
 ```
 
-Run Codex end to end:
+Run Codex end to end locally. Local Codex usually uses the login and model
+already configured by the Codex CLI; Reachable scan credentials still come from
+`reachctl doctor` / the Reachable credential store unless you override them:
 
 ```bash
 cd /Users/alaindazzi/src/reach-core
@@ -97,7 +99,7 @@ scripts/reach-testbed-go-agent-loop.sh \
   --prove
 ```
 
-Run OpenCode end to end:
+Run OpenCode end to end locally:
 
 ```bash
 cd /Users/alaindazzi/src/reach-core
@@ -111,7 +113,7 @@ scripts/reach-testbed-go-agent-loop.sh \
   --prove
 ```
 
-Run Claude Code end to end:
+Run Claude Code end to end locally:
 
 ```bash
 cd /Users/alaindazzi/src/reach-core
@@ -139,10 +141,8 @@ Important manual inputs:
 | `remediate` | Main kill switch. `false` means scan-only proof and no code changes. |
 | `rescan_only` | Proves an existing branch without creating or editing a branch. |
 | `target_branch` | Base branch, or existing remediation branch when `rescan_only=true`. |
-| `agent` | Executor: `claude`, `codex`, `opencode`, or `custom`. |
-| `prompt_agent` | Prompt flavor: `auto`, `claude`, `codex`, `opencode`, `copilot`, or `generic`. |
-| `llm_provider` | Reachable scan/enrichment provider: `auto`, `openrouter`, `claude`, `openai`, or `groq`. |
-| `opencode_model` | OpenCode model slug. |
+| `remediation_mode` | One-key mode: `codex-openai`, `claude-anthropic`, `opencode`, or `custom`. |
+| `opencode_model` | OpenCode model slug when `remediation_mode=opencode`. |
 | `prompt_profile` | Remediation profile: `safe`, `balanced`, `aggressive`, `release`, or `nightly`. |
 | `signal_types` | `all`, or a comma-separated subset such as `cve,cwe,secret`. |
 | `max_batches` | Maximum serialized remediation batches. Use this to avoid huge prompts. |
@@ -151,21 +151,31 @@ Important manual inputs:
 | `custom_agent_*` | Install/run commands for an agent wrapper not built into the template. |
 | `create_pr` | Open a PR after successful remediation. |
 
-Recommended GitHub secrets and variables:
+For the investor/customer CI demo, use one mode and one matching provider key:
+
+| Mode | Required GitHub secret | What it drives |
+|------|------------------------|----------------|
+| `codex-openai` | `OPENAI_API_KEY` | Reachable OpenAI scan/enrichment plus Codex remediation. |
+| `claude-anthropic` | `ANTHROPIC_API_KEY` | Reachable Claude scan/enrichment plus Claude Code remediation. |
+
+OpenCode and custom modes remain available for advanced runners, but they are
+not the simplest demo path.
+
+Additional supported GitHub secrets and variables:
 
 | Name | Used by |
 |------|---------|
 | `REACHABLE_API_KEY` | Optional Reachable cloud publish/org attach. |
 | `MCP_GITHUB_TOKEN` | MCP-based agent GitHub access. |
-| `OPENROUTER_API_KEY` | Reachable OpenRouter provider and OpenRouter-backed models. |
-| `ANTHROPIC_API_KEY` | Reachable Claude provider and Claude Code auth. |
-| `OPENAI_API_KEY` | Reachable OpenAI provider and OpenAI-backed agents. |
+| `OPENROUTER_API_KEY` | Optional Reachable OpenRouter provider for non-demo scan/enrichment. |
+| `ANTHROPIC_API_KEY` | One-key `claude-anthropic` mode. |
+| `OPENAI_API_KEY` | One-key `codex-openai` mode. |
 | `GROQ_API_KEY` | Reachable Groq provider. |
 | `GROK_API_KEY` | Legacy typo alias; the workflow maps it to `GROQ_API_KEY` if needed. |
 | `DEEPSEEK_API_KEY` | Direct DeepSeek-compatible agent/provider setups. |
 | `MOONSHOT_API_KEY` | Direct Moonshot-compatible agent/provider setups. |
 | `XAI_API_KEY` | xAI/Grok-compatible provider setups. |
-| `CODEX_API_KEY` | Codex CLI when API-key based auth is used. |
+| `CODEX_API_KEY` | Compatibility alias; the workflow maps it to `OPENAI_API_KEY` when `OPENAI_API_KEY` is absent. |
 | `CLAUDE_CODE_OAUTH_TOKEN` | Claude Code OAuth-based CI auth. |
 | `OPENCODE_AUTH` | OpenCode auth if the selected model requires it. |
 | `REACHABLE_PRIVATE_LLM_MODEL` | Optional repository/org variable for enterprise runners. |
@@ -227,6 +237,7 @@ Before enabling remediation:
 1. Add the secrets above.
 2. Run the workflow with `remediate=false`.
 3. Confirm baseline SARIF and audit artifacts upload.
-4. Run with `remediate=true`, `agent=claude` or `agent=opencode`, and
+4. Run with `remediate=true`, `remediation_mode=codex-openai` or
+   `remediation_mode=claude-anthropic`, and
    `max_batches=1`.
 5. Review the generated `reachable-remediate-*` pull request.
