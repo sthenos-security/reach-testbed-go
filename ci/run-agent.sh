@@ -50,9 +50,8 @@ case "$AGENT" in
       exit 127
     }
     codex exec \
-      -C "$PWD" \
       -s danger-full-access \
-      -a never \
+      -C "$PWD" \
       --skip-git-repo-check \
       "$(cat "$PROMPT_PATH")"
     ;;
