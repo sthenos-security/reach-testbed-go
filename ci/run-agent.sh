@@ -61,7 +61,10 @@ case "$AGENT" in
       echo "opencode CLI not found. Install OpenCode or select another agent." >&2
       exit 127
     }
-    opencode run "$(cat "$PROMPT_PATH")"
+    opencode run \
+      --dir "$PWD" \
+      --dangerously-skip-permissions \
+      "$(cat "$PROMPT_PATH")"
     ;;
 
   *)
