@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reach-testbed-go
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: reach-testbed-go
+  template:
+    metadata:
+      labels:
+        app: reach-testbed-go
+    spec:
+      containers:
+        - name: app
+          image: example.invalid/reach-testbed-go:synthetic
+          securityContext:
+            privileged: true
+            allowPrivilegeEscalation: true
+            readOnlyRootFilesystem: false
+          env:
+            - name: REACH_TESTBED_SERVICE_TOKEN
+              value: rtg_k8s_synthetic_token_not_real

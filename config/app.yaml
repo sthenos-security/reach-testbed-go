@@ -1,0 +1,13 @@
+server:
+  debug: true
+  admin_bind: "0.0.0.0:8081"
+  cors:
+    allow_origins:
+      - "*"
+  tls:
+    verify_peer: false
+secrets:
+  # Synthetic fixture value, not a real credential.
+  fallback_api_key: "rtg_config_synthetic_key_abcdef123456"
+logging:
+  include_request_headers: true
