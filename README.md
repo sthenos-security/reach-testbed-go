@@ -173,6 +173,16 @@ Important manual inputs:
 | `custom_agent_*` | Install/run commands for an agent wrapper not built into the template. |
 | `create_pr` | Open a PR after successful remediation. |
 
+### Reset Demo Branches
+
+The manual workflow
+[`.github/workflows/reachable-demo-cleanup.yml`](.github/workflows/reachable-demo-cleanup.yml)
+removes stale remote remediation branches before rerunning a customer demo.
+By default it deletes branches matching `reachable-remediate-*` and skips any
+branch that still has an open pull request. Use `dry_run=true` to preview the
+cleanup, or `delete_open_pr_branches=true` when you intentionally want to reset
+open demo PR branches too.
+
 For the investor/customer CI demo, use one mode and one matching provider key:
 
 | Mode | Required GitHub secret | What it drives |

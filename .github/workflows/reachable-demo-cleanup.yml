@@ -1,0 +1,118 @@
+name: Reachable Demo Cleanup
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch_prefix:
+        description: "Remote branch prefix to delete"
+        type: string
+        default: reachable-remediate-
+      dry_run:
+        description: "List matching branches without deleting them"
+        type: boolean
+        default: false
+      delete_open_pr_branches:
+        description: "Also delete branches that have an open pull request"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Delete stale Reachable demo branches
+        env:
+          BRANCH_PREFIX: ${{ inputs.branch_prefix }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          DELETE_OPEN_PR_BRANCHES: ${{ inputs.delete_open_pr_branches }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          prefix="${BRANCH_PREFIX:-reachable-remediate-}"
+          if [ -z "$prefix" ]; then
+            echo "branch_prefix cannot be empty." >&2
+            exit 2
+          fi
+          if [ "$prefix" = "main" ] || [ "$prefix" = "master" ]; then
+            echo "Refusing unsafe branch_prefix=$prefix." >&2
+            exit 2
+          fi
+
+          mapfile -t branches < <(
+            git ls-remote --heads origin "${prefix}*" |
+              awk '{sub("refs/heads/","",$2); print $2}' |
+              sort
+          )
+
+          mapfile -t open_pr_heads < <(
+            gh pr list --state open --json headRefName --jq '.[].headRefName' |
+              sort -u
+          )
+
+          is_open_pr_branch() {
+            local branch="$1"
+            local open
+            for open in "${open_pr_heads[@]}"; do
+              if [ "$branch" = "$open" ]; then
+                return 0
+              fi
+            done
+            return 1
+          }
+
+          deleted=0
+          skipped=0
+          matched="${#branches[@]}"
+
+          {
+            echo "## Reachable Demo Branch Cleanup"
+            echo ""
+            echo "- Prefix: \`$prefix\`"
+            echo "- Dry run: \`$DRY_RUN\`"
+            echo "- Delete open PR branches: \`$DELETE_OPEN_PR_BRANCHES\`"
+            echo "- Matching remote branches: \`$matched\`"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$matched" -eq 0 ]; then
+            echo "No remote branches match prefix '$prefix'."
+            echo "No remote branches match prefix \`$prefix\`." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          for branch in "${branches[@]}"; do
+            if is_open_pr_branch "$branch" && [ "$DELETE_OPEN_PR_BRANCHES" != "true" ]; then
+              echo "Skipping $branch because it has an open pull request."
+              echo "- skipped \`$branch\` (open PR)" >> "$GITHUB_STEP_SUMMARY"
+              skipped=$((skipped + 1))
+              continue
+            fi
+
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "Would delete remote branch: $branch"
+              echo "- would delete \`$branch\`" >> "$GITHUB_STEP_SUMMARY"
+              skipped=$((skipped + 1))
+              continue
+            fi
+
+            echo "Deleting remote branch: $branch"
+            git push origin --delete "$branch"
+            echo "- deleted \`$branch\`" >> "$GITHUB_STEP_SUMMARY"
+            deleted=$((deleted + 1))
+          done
+
+          {
+            echo ""
+            echo "- Deleted: \`$deleted\`"
+            echo "- Skipped/listed: \`$skipped\`"
+          } >> "$GITHUB_STEP_SUMMARY"
