@@ -121,20 +121,6 @@ scripts/reach-testbed-go-agent-loop.sh \
   --prove
 ```
 
-Run OpenCode end to end locally:
-
-```bash
-cd /Users/alaindazzi/src/reach-core
-OPENCODE_MODEL=opencode/deepseek-v4-flash-free \
-scripts/reach-testbed-go-agent-loop.sh \
-  --fixture /Users/alaindazzi/src/reach-testbed-go \
-  --base-branch main \
-  --branch reachable-remediate-opencode-$(date +%Y%m%d%H%M%S) \
-  --agent opencode \
-  --run-agent \
-  --prove
-```
-
 Run Claude Code end to end locally:
 
 ```bash
@@ -163,14 +149,13 @@ Important manual inputs:
 | `remediate` | Main kill switch. `false` means scan-only proof and no code changes. |
 | `rescan_only` | Proves an existing branch without creating or editing a branch. |
 | `target_branch` | Base branch, or existing remediation branch when `rescan_only=true`. |
-| `remediation_mode` | One-key mode: `codex-openai`, `claude-anthropic`, `opencode`, or `custom`. |
-| `opencode_model` | OpenCode model slug when `remediation_mode=opencode`. |
+| `remediation_mode` | One-key mode: `codex-openai` or `claude-anthropic`. |
 | `prompt_profile` | Remediation profile: `safe`, `balanced`, `aggressive`, `release`, or `nightly`. |
 | `signal_types` | `all`, or a comma-separated subset such as `cve,cwe,secret`. |
 | `max_batches` | Maximum serialized remediation batches. Use this to avoid huge prompts. |
 | `rescan_strategy` | `final` runs one Reachable proof scan after all batches; `each_batch` rescans after every batch. |
 | `scan_extra_flags` | Extra `reachctl scan` flags. |
-| `custom_agent_*` | Install/run commands for an agent wrapper not built into the template. |
+| `require_ai` | Fail early unless a Reachable scan/enrichment key is configured. Keep `true` for demos. |
 | `create_pr` | Open a PR after successful remediation. |
 
 ### Reset Demo Branches
@@ -190,9 +175,6 @@ For the investor/customer CI demo, use one mode and one matching provider key:
 | `codex-openai` | `OPENAI_API_KEY` | Reachable OpenAI scan/enrichment plus Codex remediation. |
 | `claude-anthropic` | `ANTHROPIC_API_KEY` | Reachable Claude scan/enrichment plus Claude Code remediation. |
 
-OpenCode and custom modes remain available for advanced runners, but they are
-not the simplest demo path.
-
 Additional supported GitHub secrets and variables:
 
 | Name | Used by |
@@ -200,21 +182,8 @@ Additional supported GitHub secrets and variables:
 | `REACHABLE_API_KEY` | Optional Reachable cloud publish/org attach. |
 | `REACHABLE_GITHUB_TOKEN` | Optional fine-grained token for opening PRs when repository Actions settings block PR creation by `GITHUB_TOKEN`. Needs Contents and Pull requests write permissions. |
 | `MCP_GITHUB_TOKEN` | MCP-based agent GitHub access. |
-| `OPENROUTER_API_KEY` | Optional Reachable OpenRouter provider for non-demo scan/enrichment. |
 | `ANTHROPIC_API_KEY` | One-key `claude-anthropic` mode. |
 | `OPENAI_API_KEY` | One-key `codex-openai` mode. |
-| `GROQ_API_KEY` | Reachable Groq provider. |
-| `GROK_API_KEY` | Legacy typo alias; the workflow maps it to `GROQ_API_KEY` if needed. |
-| `DEEPSEEK_API_KEY` | Direct DeepSeek-compatible agent/provider setups. |
-| `MOONSHOT_API_KEY` | Direct Moonshot-compatible agent/provider setups. |
-| `XAI_API_KEY` | xAI/Grok-compatible provider setups. |
-| `CODEX_API_KEY` | Compatibility alias; the workflow maps it to `OPENAI_API_KEY` when `OPENAI_API_KEY` is absent. |
-| `CLAUDE_CODE_OAUTH_TOKEN` | Claude Code OAuth-based CI auth. |
-| `OPENCODE_AUTH` | OpenCode auth if the selected model requires it. |
-| `REACHABLE_PRIVATE_LLM_MODEL` | Optional repository/org variable for enterprise runners. |
-| `REACHABLE_PRIVATE_LLM_API_KEY` | Optional private/local model key. |
-| `ENZO_LOCAL_MODEL` | Optional local Enzo/private model variable. |
-| `ENZO_LOCAL_API_KEY` | Optional local Enzo/private model key. |
 | `REACHABLE_DIST_REPO` | Optional repository/org variable that points at the install distribution repo. Defaults to `sthenos-security/reach-dist`. |
 | `REACHABLE_VERSION` | Optional version pin for demos or customer rollouts. Defaults to latest. |
 
@@ -341,8 +310,6 @@ Supported CI executor modes:
 |-------|--------------------------|-------|
 | Claude Code | `npm install -g @anthropic-ai/claude-code` | Best default for GitHub-hosted CI when auth is configured. |
 | Codex | `npm install -g @openai/codex` | Uses `codex exec` in non-interactive mode. |
-| OpenCode | `npm install -g opencode-ai` | Use `opencode_model` to choose the model. |
-| Custom | User-supplied install/run command | For wrappers, GitHub Actions, or future agents. |
 
 Cursor is supported as a local MCP target, but it is not a GitHub-hosted CI
 executor in this template.

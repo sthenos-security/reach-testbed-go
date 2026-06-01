@@ -22,12 +22,6 @@ on:
         options:
           - codex-openai
           - claude-anthropic
-          - opencode
-          - custom
-      opencode_model:
-        description: "OpenCode model slug, when remediation_mode=opencode"
-        type: string
-        default: opencode/deepseek-v4-flash-free
       prompt_profile:
         description: "Reachable remediation bundling profile"
         type: choice
@@ -57,14 +51,10 @@ on:
         description: "Extra reachctl scan flags"
         type: string
         default: ""
-      custom_agent_install_command:
-        description: "Optional install command when agent=custom"
-        type: string
-        default: ""
-      custom_agent_run_command:
-        description: "Required run command when agent=custom; receives PROMPT_PATH"
-        type: string
-        default: ""
+      require_ai:
+        description: "Fail early unless a Reachable scan/enrichment LLM key is configured"
+        type: boolean
+        default: true
       create_pr:
         description: "Open a pull request after successful remediation"
         type: boolean
@@ -95,11 +85,9 @@ jobs:
       REACHABLE_MAX_BATCHES: ${{ inputs.max_batches }}
       REACHABLE_RESCAN_STRATEGY: ${{ inputs.rescan_strategy }}
       REACHABLE_SCAN_EXTRA_FLAGS: ${{ inputs.scan_extra_flags }}
+      REACHABLE_REQUIRE_AI: ${{ inputs.require_ai }}
       REACHABLE_CREATE_PR: ${{ inputs.create_pr }}
       REACHABLE_AGENT_LOG_DIR: .reachable/private-agent-logs
-      REACHABLE_CUSTOM_AGENT_INSTALL_COMMAND: ${{ inputs.custom_agent_install_command }}
-      REACHABLE_AGENT_RUN_COMMAND: ${{ inputs.custom_agent_run_command }}
-      OPENCODE_MODEL: ${{ inputs.opencode_model }}
 
       # Reachable + GitHub integration tokens.
       REACHABLE_API_KEY: ${{ secrets.REACHABLE_API_KEY }}
@@ -109,26 +97,10 @@ jobs:
       MCP_GITHUB_TOKEN: ${{ secrets.MCP_GITHUB_TOKEN }}
 
       # Reachable scan/enrichment LLM providers.
-      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-      GROK_API_KEY: ${{ secrets.GROK_API_KEY }}
-      DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-      MOONSHOT_API_KEY: ${{ secrets.MOONSHOT_API_KEY }}
-      XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
 
-      # Private/local model support for enterprise runners.
-      REACHABLE_PRIVATE_LLM_MODEL: ${{ vars.REACHABLE_PRIVATE_LLM_MODEL }}
-      REACHABLE_PRIVATE_LLM_API_KEY: ${{ secrets.REACHABLE_PRIVATE_LLM_API_KEY }}
-      REACHABLE_PRIVATE_LLM_API_KEY_CREDENTIAL: ${{ secrets.REACHABLE_PRIVATE_LLM_API_KEY_CREDENTIAL }}
-      ENZO_LOCAL_API_KEY: ${{ secrets.ENZO_LOCAL_API_KEY }}
-      ENZO_LOCAL_MODEL: ${{ vars.ENZO_LOCAL_MODEL }}
-
-      # Coding-agent auth. Agents may also use their own persisted runner login.
-      CODEX_API_KEY: ${{ secrets.CODEX_API_KEY }}
-      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-      OPENCODE_AUTH: ${{ secrets.OPENCODE_AUTH }}
+      # Coding-agent auth. Codex/Claude use the same provider key as Reachable.
 
     steps:
       - uses: actions/checkout@v4
@@ -172,17 +144,6 @@ jobs:
           fi
           du -sh "$HOME/.reachable" 2>/dev/null || true
 
-      - name: Normalize provider secrets
-        run: |
-          if [ -z "${OPENAI_API_KEY:-}" ] && [ -n "${CODEX_API_KEY:-}" ]; then
-            echo "OPENAI_API_KEY=$CODEX_API_KEY" >> "$GITHUB_ENV"
-            echo "Mapped CODEX_API_KEY alias to OPENAI_API_KEY for Codex/OpenAI mode."
-          fi
-          if [ -z "${GROQ_API_KEY:-}" ] && [ -n "${GROK_API_KEY:-}" ]; then
-            echo "GROQ_API_KEY=$GROK_API_KEY" >> "$GITHUB_ENV"
-            echo "Mapped legacy GROK_API_KEY secret to GROQ_API_KEY for Reachable."
-          fi
-
       - name: Resolve remediation mode
         run: |
           set -euo pipefail
@@ -211,23 +172,6 @@ jobs:
                 exit 2
               fi
               ;;
-            opencode)
-              agent="opencode"
-              prompt_agent="opencode"
-              provider="auto"
-              if [ "$require_auth" -eq 1 ] && [ -z "${OPENCODE_AUTH:-}" ]; then
-                echo "remediation_mode=opencode selected without OPENCODE_AUTH; continuing because some OpenCode models support unauthenticated CI use." >&2
-              fi
-              ;;
-            custom)
-              agent="custom"
-              prompt_agent="generic"
-              provider="auto"
-              if [ "$require_auth" -eq 1 ] && [ -z "${REACHABLE_AGENT_RUN_COMMAND:-}" ]; then
-                echo "remediation_mode=custom requires custom_agent_run_command." >&2
-                exit 2
-              fi
-              ;;
             *)
               echo "unsupported remediation_mode: $mode" >&2
               exit 2
@@ -244,6 +188,40 @@ jobs:
           echo "  coding agent: $agent"
           echo "  prompt flavor: $prompt_agent"
           echo "  Reachable AI provider: $provider"
+
+      - name: Validate CI credentials
+        run: |
+          set -euo pipefail
+          has_openai=0
+          has_anthropic=0
+          [ -n "${OPENAI_API_KEY:-}" ] && has_openai=1
+          [ -n "${ANTHROPIC_API_KEY:-}" ] && has_anthropic=1
+
+          echo "Reachable CI credential preflight:"
+          echo "  remediation mode: ${REACHABLE_REMEDIATION_MODE}"
+          echo "  selected scan provider: ${REACHABLE_LLM_PROVIDER}"
+          echo "  built-in GITHUB_TOKEN: present"
+          echo "  REACHABLE_GITHUB_TOKEN configured: $([ -n "${REACHABLE_GITHUB_TOKEN:-}" ] && echo yes || echo no)"
+          echo "  MCP_GITHUB_TOKEN configured: $([ -n "${MCP_GITHUB_TOKEN:-}" ] && echo yes || echo no)"
+          echo "  OPENAI_API_KEY configured: $([ "$has_openai" -eq 1 ] && echo yes || echo no)"
+          echo "  ANTHROPIC_API_KEY configured: $([ "$has_anthropic" -eq 1 ] && echo yes || echo no)"
+
+          if [ "${REACHABLE_REQUIRE_AI:-true}" = "true" ]; then
+            case "${REACHABLE_REMEDIATION_MODE}" in
+              codex-openai)
+                if [ "$has_openai" -eq 0 ]; then
+                  echo "remediation_mode=codex-openai requires one GitHub secret: OPENAI_API_KEY." >&2
+                  exit 2
+                fi
+                ;;
+              claude-anthropic)
+                if [ "$has_anthropic" -eq 0 ]; then
+                  echo "remediation_mode=claude-anthropic requires one GitHub secret: ANTHROPIC_API_KEY." >&2
+                  exit 2
+                fi
+                ;;
+            esac
+          fi
 
       - name: Install Reachable
         run: |
@@ -340,15 +318,6 @@ jobs:
               npm install -g @openai/codex
               codex --version
               ;;
-            opencode)
-              npm install -g opencode-ai
-              opencode --version
-              ;;
-            custom)
-              if [ -n "$REACHABLE_CUSTOM_AGENT_INSTALL_COMMAND" ]; then
-                bash -lc "$REACHABLE_CUSTOM_AGENT_INSTALL_COMMAND"
-              fi
-              ;;
             *)
               echo "unsupported agent: $REACHABLE_AGENT" >&2
               exit 2
@@ -374,7 +343,7 @@ jobs:
           prompt_agent="$REACHABLE_PROMPT_AGENT"
           if [ "$prompt_agent" = "auto" ]; then
             case "$REACHABLE_AGENT" in
-              claude|codex|opencode) prompt_agent="$REACHABLE_AGENT" ;;
+              claude|codex) prompt_agent="$REACHABLE_AGENT" ;;
               *) prompt_agent="generic" ;;
             esac
           fi

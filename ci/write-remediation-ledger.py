@@ -120,23 +120,13 @@ def _workflow_context() -> dict[str, Any]:
             "rescan_strategy": os.environ.get("REACHABLE_RESCAN_STRATEGY", ""),
             "scan_extra_flags": os.environ.get("REACHABLE_SCAN_EXTRA_FLAGS", ""),
             "create_pr": os.environ.get("REACHABLE_CREATE_PR", ""),
-            "opencode_model": os.environ.get("OPENCODE_MODEL", ""),
-            "custom_agent_install_command_configured": bool(os.environ.get("REACHABLE_CUSTOM_AGENT_INSTALL_COMMAND")),
-            "custom_agent_run_command_configured": bool(os.environ.get("REACHABLE_AGENT_RUN_COMMAND")),
         },
         "credential_presence": {
             "reachable_api_key": bool(os.environ.get("REACHABLE_API_KEY")),
             "reachable_github_token": bool(os.environ.get("REACHABLE_GITHUB_TOKEN")),
             "mcp_github_token": bool(os.environ.get("MCP_GITHUB_TOKEN")),
-            "openrouter_api_key": bool(os.environ.get("OPENROUTER_API_KEY")),
             "anthropic_api_key": bool(os.environ.get("ANTHROPIC_API_KEY")),
             "openai_api_key": bool(os.environ.get("OPENAI_API_KEY")),
-            "groq_api_key": bool(os.environ.get("GROQ_API_KEY")),
-            "deepseek_api_key": bool(os.environ.get("DEEPSEEK_API_KEY")),
-            "moonshot_api_key": bool(os.environ.get("MOONSHOT_API_KEY")),
-            "xai_api_key": bool(os.environ.get("XAI_API_KEY")),
-            "private_llm_api_key": bool(os.environ.get("REACHABLE_PRIVATE_LLM_API_KEY")),
-            "enzo_local_api_key": bool(os.environ.get("ENZO_LOCAL_API_KEY")),
         },
     }
 
