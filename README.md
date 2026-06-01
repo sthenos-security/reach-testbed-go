@@ -21,6 +21,19 @@ This repository is the compact Go demo for the Reachable remediation workflow:
 The process is intentionally branch-first. The safe default is scan-only:
 `remediate=false` means CI will not edit code.
 
+## Public Demo Pages
+
+The latest public scan/remediation summary is published to GitHub Pages:
+
+<https://sthenos-security.github.io/reach-testbed-go/>
+
+This is the customer-friendly view for demos. It lists the last selected SARIF
+report, top exploitable/reachable issues, reachability counts, remediation
+ledger status, and links back to the Actions run and GitHub code scanning. It is
+a sanitized mini-dashboard, not the full local Reachable dashboard: raw prompt
+bundles, agent transcripts, local databases, private logs, and generated rule
+internals are not published.
+
 ## Expected Results
 
 The customer-facing baseline manifest lives in [EXPECTED.md](EXPECTED.md). The
@@ -226,17 +239,22 @@ The SARIF report contains production findings that are `reachable` or
 `unknown` and not defended by the attack pass. `NON_PROD`, `NOT_REACHABLE`,
 and defended/noise findings stay out of CI code-scanning results. The workflow
 uploads these SARIF files as artifacts and can post them to GitHub code
-scanning when the repository enables SARIF upload. In CI mode we do not
-publish the full Reachable dashboard; customers already have their build loop,
-and SARIF is the right issue transport for CI.
+scanning when the repository enables SARIF upload. The workflow also publishes a
+small GitHub Pages mini-dashboard for the latest run at
+<https://sthenos-security.github.io/reach-testbed-go/>. In CI mode we do not
+publish the full local Reachable dashboard by default; customers already have
+their build loop, and SARIF plus the sanitized Pages summary are the right
+public issue transport for CI.
 
 The workflow selects the strongest available SARIF for GitHub Code Scanning:
 final proof scan first, latest batch proof scan next, then baseline scan. The
 Actions job summary prints the selected SARIF path, actionable result count,
 SARIF levels, upload outcome, and a direct link to
-`Security > Code scanning` filtered to `category:reachable`. If GitHub rejects
+`Security > Code scanning` filtered to `category:reachable`. The Pages summary
+prioritizes the top exploitable/reachable issues first, then falls back to
+unknown actionable findings when no reachable issue remains. If GitHub rejects
 SARIF upload because code scanning is disabled for the repository, the same
-SARIF and proof artifacts remain attached to the workflow run.
+SARIF, Pages files, and proof artifacts remain attached to the workflow run.
 
 Each scan also publishes compact support/proof logs under
 `.reachable/ci-artifacts/reports/<label>/`:

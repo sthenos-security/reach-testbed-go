@@ -75,6 +75,8 @@ permissions:
   pull-requests: write
   security-events: write
   actions: read
+  pages: write
+  id-token: write
 
 jobs:
   reachable-remediate:
@@ -596,6 +598,14 @@ jobs:
             echo "GitHub code scanning SARIF: $target"
           fi
 
+      - name: Build public Reachable Pages summary
+        if: always()
+        run: |
+          python ci/build-pages-summary.py \
+            --sarif .reachable/ci-artifacts/reachable-code-scanning.sarif \
+            --ledger .reachable/ci-artifacts/remediation-ledger.json \
+            --out .reachable/ci-artifacts/pages
+
       - name: Summarize Reachable code scanning data
         if: always()
         run: |
@@ -664,6 +674,21 @@ jobs:
           if-no-files-found: ignore
           path: |
             .reachable/ci-artifacts/**
+
+      - name: Configure GitHub Pages
+        if: always() && github.event_name != 'pull_request'
+        uses: actions/configure-pages@v5
+
+      - name: Upload GitHub Pages artifact
+        if: always() && github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .reachable/ci-artifacts/pages
+
+      - name: Deploy GitHub Pages
+        id: deployment
+        if: always() && github.event_name != 'pull_request'
+        uses: actions/deploy-pages@v4
 
       - name: Upload Reachable SARIF to code scanning
         id: reachable-sarif-upload
