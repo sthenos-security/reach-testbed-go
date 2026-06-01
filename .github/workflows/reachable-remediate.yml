@@ -677,10 +677,12 @@ jobs:
 
       - name: Configure GitHub Pages
         if: always() && github.event_name != 'pull_request'
+        continue-on-error: true
         uses: actions/configure-pages@v5
 
       - name: Upload GitHub Pages artifact
         if: always() && github.event_name != 'pull_request'
+        continue-on-error: true
         uses: actions/upload-pages-artifact@v3
         with:
           path: .reachable/ci-artifacts/pages
@@ -688,6 +690,7 @@ jobs:
       - name: Deploy GitHub Pages
         id: deployment
         if: always() && github.event_name != 'pull_request'
+        continue-on-error: true
         uses: actions/deploy-pages@v4
 
       - name: Upload Reachable SARIF to code scanning

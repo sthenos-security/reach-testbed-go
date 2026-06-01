@@ -34,6 +34,12 @@ a sanitized mini-dashboard, not the full local Reachable dashboard: raw prompt
 bundles, agent transcripts, local databases, private logs, and generated rule
 internals are not published.
 
+If the repository is private on a GitHub plan that does not include Pages, the
+workflow still uploads the same mini-dashboard files under
+`.reachable/ci-artifacts/pages` in the Actions artifact. The public link starts
+working once GitHub Pages is enabled, for example after making the demo
+repository public.
+
 ## Expected Results
 
 The customer-facing baseline manifest lives in [EXPECTED.md](EXPECTED.md). The
