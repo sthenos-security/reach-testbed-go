@@ -240,9 +240,11 @@ result count, Reachable risk levels, upload outcome, and a direct link to
 `Security > Code scanning` filtered to `category:reachable`. The Pages summary
 prioritizes the top production actionable exploitable/reachable issues first,
 shows defended/defendable signals separately, then falls back to unknown
-actionable findings when no reachable issue remains. If GitHub rejects SARIF
-upload because code scanning is disabled for the repository, the same SARIF,
-Pages files, and proof artifacts remain attached to the workflow run.
+actionable findings when no reachable issue remains. It also links the latest
+DB-backed compliance evidence pack when the installed Reachable wheel supports
+`reachctl compliance report`. If GitHub rejects SARIF upload because code
+scanning is disabled for the repository, the same SARIF, Pages files, and
+proof artifacts remain attached to the workflow run.
 
 Each scan also publishes compact support/proof logs under
 `.reachable/ci-artifacts/reports/<label>/`:
@@ -254,6 +256,11 @@ Each scan also publishes compact support/proof logs under
 | `integrity.txt` | SARIF/database integrity proof. |
 | `compliance.md` / `compliance.json` | DB-backed compliance evidence pack when supported by the installed Reachable wheel. |
 | `scan-path.txt` | Original runner scan session path. |
+
+The Pages mini-dashboard copies the latest available compliance pack to
+`compliance.md` and `compliance.json` for public demo review. It still does not
+publish raw prompt bundles, agent transcripts, local databases, or private
+logs.
 
 The baseline scan is labeled `baseline`, rescan-only proof is labeled
 `rescan-only`, post-remediation proof scans are labeled `after-final` by

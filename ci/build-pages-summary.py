@@ -70,8 +70,10 @@ def main() -> int:
         shutil.copy2(sarif_path, out_dir / "reachable.sarif")
     if ledger_path.exists():
         shutil.copy2(ledger_path, out_dir / "remediation-ledger.json")
+    compliance = _copy_latest_compliance_pack(out_dir)
 
     summary = _summarize(sarif=sarif, ledger=ledger)
+    summary["compliance"] = compliance
     page_url = _pages_url()
     code_scanning_url = _code_scanning_url()
     run_url = _run_url()
@@ -103,6 +105,30 @@ def _load_json(path: Path) -> dict[str, Any]:
         return json.loads(path.read_text(encoding="utf-8"))
     except Exception as exc:  # noqa: BLE001 - CI summary should still render.
         return {"_error": f"failed to parse {path}: {exc}"}
+
+
+def _copy_latest_compliance_pack(out_dir: Path) -> dict[str, Any]:
+    artifact_root = out_dir.parent
+    reports_root = artifact_root / "reports"
+    if not reports_root.exists():
+        return {"available": False}
+    report_dirs = [path for path in reports_root.iterdir() if path.is_dir()]
+    preferred = ["after-final", *sorted((path.name for path in report_dirs), reverse=True)]
+    for label in preferred:
+        report_dir = reports_root / label
+        md_path = report_dir / "compliance.md"
+        json_path = report_dir / "compliance.json"
+        if not md_path.exists() and not json_path.exists():
+            continue
+        copied: dict[str, Any] = {"available": True, "label": label}
+        if md_path.exists():
+            shutil.copy2(md_path, out_dir / "compliance.md")
+            copied["markdown"] = "compliance.md"
+        if json_path.exists():
+            shutil.copy2(json_path, out_dir / "compliance.json")
+            copied["json"] = "compliance.json"
+        return copied
+    return {"available": False}
 
 
 def _summarize(*, sarif: dict[str, Any], ledger: dict[str, Any]) -> dict[str, Any]:
@@ -289,6 +315,7 @@ def _render_html(*, summary: dict[str, Any], generated_at: str, page_url: str, c
     by_type = summary.get("by_type") or {}
     by_family = summary.get("by_family") or {}
     remediation = summary.get("remediation") or {}
+    compliance = summary.get("compliance") or {}
     defended_count = sum(int(by_reach.get(state, 0)) for state in DEFENDED_STATES)
     suspicious_count = int(summary.get("suspicious_package_count") or 0)
     priority_rows = "\n".join(_issue_row(item) for item in summary.get("top_priority") or [])
@@ -342,6 +369,7 @@ def _render_html(*, summary: dict[str, Any], generated_at: str, page_url: str, c
       <a href="{html.escape(run_url)}">GitHub Actions run</a>
       <a href="reachable.sarif">Download selected SARIF</a>
       <a href="remediation-ledger.json">Download remediation ledger</a>
+      {_compliance_links(compliance)}
     </div>
     <div class="cards">
       {_card("Production actionable signals", str(summary.get("total", 0)))}
@@ -390,6 +418,17 @@ def _card(label: str, value: str) -> str:
     return f'<div class="card"><div class="num">{html.escape(value)}</div><div class="label">{html.escape(label)}</div></div>'
 
 
+def _compliance_links(compliance: dict[str, Any]) -> str:
+    if not compliance.get("available"):
+        return ""
+    links = []
+    if compliance.get("markdown"):
+        links.append('<a href="compliance.md">Download compliance pack</a>')
+    if compliance.get("json"):
+        links.append('<a href="compliance.json">Download compliance JSON</a>')
+    return "\n      ".join(links)
+
+
 def _issue_row(item: dict[str, str]) -> str:
     reachability = item.get("reachability", "")
     reach_class = "reachable" if reachability in {"REACHABLE", "EXPLOITABLE"} else "defended" if reachability in DEFENDED_STATES else ""
@@ -426,6 +465,7 @@ def _render_markdown(*, summary: dict[str, Any], page_url: str, code_scanning_ur
     by_type = summary.get("by_type") or {}
     by_family = summary.get("by_family") or {}
     remediation = summary.get("remediation") or {}
+    compliance = summary.get("compliance") or {}
     defended_count = sum(int(by_reach.get(state, 0)) for state in DEFENDED_STATES)
     suspicious_count = int(summary.get("suspicious_package_count") or 0)
     lines = [
@@ -445,6 +485,7 @@ def _render_markdown(*, summary: dict[str, Any], page_url: str, code_scanning_ur
         f"- OWASP Web Top 10: `{by_family.get('OWASP Web Top 10', 0)}`",
         f"- OWASP AI / LLM: `{by_family.get('OWASP AI / LLM', 0)}`",
         f"- Remediation status: `{remediation.get('status', 'unknown')}`",
+        f"- Compliance evidence pack: `{('available from Pages' if compliance.get('available') else 'not available')}`",
         f"- Pages summary: {page_url or 'available after Pages deployment'}",
         f"- Code scanning: {code_scanning_url}",
         f"- Actions run: {run_url}",
