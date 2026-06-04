@@ -84,6 +84,9 @@ env:
   # Opt into GitHub's Node 24 JavaScript action runtime now so the demo does
   # not emit platform deprecation annotations during customer-facing runs.
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # Suppress Node runtime deprecation chatter from GitHub-owned JavaScript
+  # actions so the demo log stays focused on Reachable evidence.
+  NODE_OPTIONS: --no-deprecation
 
 jobs:
   reachable-remediate:
@@ -123,7 +126,7 @@ jobs:
       # Coding-agent auth. Codex/Claude use the same provider key as Reachable.
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ inputs.target_branch }}
           token: ${{ secrets.REACHABLE_GITHUB_TOKEN || github.token }}
@@ -340,7 +343,7 @@ jobs:
           python3 ci/reachable-cache-evidence.py after-scan
 
       - name: Upload baseline artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: reachable-baseline
           if-no-files-found: ignore
@@ -768,7 +771,7 @@ jobs:
 
       - name: Upload remediation artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: reachable-remediation-artifacts
           if-no-files-found: ignore
@@ -798,7 +801,7 @@ jobs:
         id: publish-results
         if: always() && github.event_name != 'pull_request' && inputs.remediate && !inputs.rescan_only
         continue-on-error: true
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 
       - name: Upload Reachable SARIF to code scanning
         id: reachable-sarif-upload

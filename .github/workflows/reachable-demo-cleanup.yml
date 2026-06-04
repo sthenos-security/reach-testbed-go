@@ -24,13 +24,15 @@ env:
   # Opt into GitHub's Node 24 JavaScript action runtime now so cleanup runs use
   # the same customer-facing runtime posture as the remediation demo.
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # Keep cleanup logs free of GitHub-owned JavaScript action deprecation noise.
+  NODE_OPTIONS: --no-deprecation
 
 jobs:
   cleanup:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 1
 
