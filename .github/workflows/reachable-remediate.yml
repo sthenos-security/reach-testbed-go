@@ -59,6 +59,14 @@ on:
         description: "Open a pull request after successful remediation"
         type: boolean
         default: true
+      run_project_tests:
+        description: "Run the repository test command after agent edits before proof scans"
+        type: boolean
+        default: true
+      project_test_command:
+        description: "Repository test command for the post-agent safety gate"
+        type: string
+        default: "go test ./..."
 
 permissions:
   contents: write
@@ -87,6 +95,8 @@ jobs:
       REACHABLE_SCAN_EXTRA_FLAGS: ${{ inputs.scan_extra_flags }}
       REACHABLE_REQUIRE_AI: ${{ inputs.require_ai }}
       REACHABLE_CREATE_PR: ${{ inputs.create_pr }}
+      REACHABLE_RUN_PROJECT_TESTS: ${{ inputs.run_project_tests }}
+      REACHABLE_PROJECT_TEST_COMMAND: ${{ inputs.project_test_command }}
       REACHABLE_AGENT_LOG_DIR: .reachable/private-agent-logs
 
       # Reachable + GitHub integration tokens.
@@ -301,6 +311,30 @@ jobs:
           reachctl audit --scan-path "$latest_scan_path" --summary
           reachctl integrity --scan-path "$latest_scan_path"
 
+      - name: Gate rescan-only verification
+        if: ${{ inputs.rescan_only }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          sarif_path = Path(".reachable/ci-artifacts/reachable.sarif")
+          if not sarif_path.exists():
+              print("Reachable rescan-only verification failed: baseline SARIF was not produced.", file=sys.stderr)
+              sys.exit(3)
+
+          sarif = json.loads(sarif_path.read_text(encoding="utf-8"))
+          results = sum(len(run.get("results") or []) for run in sarif.get("runs") or [])
+          print(f"Reachable rescan-only verification SARIF results: {results}")
+          if results:
+              print(
+                  "Reachable rescan-only verification failed: the selected branch still has production actionable findings.",
+                  file=sys.stderr,
+              )
+              sys.exit(3)
+          PY
+
       - name: Create remediation branch
         if: ${{ inputs.remediate && !inputs.rescan_only }}
         run: |
@@ -376,14 +410,25 @@ jobs:
               done
             fi
 
+            set +e
             reachctl remediate \
               --workspace . \
               --agent "$prompt_agent" \
               --branch-name "$REACHABLE_REMEDIATION_BRANCH" \
               --profile "$REACHABLE_PROMPT_PROFILE" \
               "${signal_args[@]}"
+            remediate_status="$?"
+            set -e
+            if [ "$remediate_status" -ne 0 ]; then
+              echo "reachctl remediate exited with status ${remediate_status}; continuing only if a bundle was produced."
+            fi
+            if [ ! -f .reachable/remediation-bundle/bundle.json ]; then
+              echo "ERROR: reachctl remediate did not produce .reachable/remediation-bundle/bundle.json." >&2
+              exit "$remediate_status"
+            fi
 
-            selected_rules="$(python -c "import json; from pathlib import Path; p=Path('.reachable/remediation-bundle/bundle.json'); d=json.loads(p.read_text(encoding='utf-8')) if p.exists() else {}; print(int(d.get('selected_rule_count') or len(d.get('selected_rules') or [])))")"
+            selected_rules="$(python -c 'import json; from pathlib import Path; d=json.loads(Path(".reachable/remediation-bundle/bundle.json").read_text(encoding="utf-8")); rules=d.get("selected_rules") or d.get("rules") or []; raw=str(d.get("selected_rule_count")).strip(); print(int(raw) if raw.isdigit() else len(rules))')"
+            echo "Reachable selected remediation rules: ${selected_rules}"
             if [ "$selected_rules" -le 0 ]; then
               echo "Reachable generated no remediation rules; stopping."
               break
@@ -401,6 +446,16 @@ jobs:
               exit "$agent_status"
             fi
             echo "Coding agent completed batch $batch; private agent log retained on runner only."
+
+            if [ "${REACHABLE_RUN_PROJECT_TESTS:-true}" = "true" ]; then
+              # The coding agent just edited the repository. Run the project's
+              # own test suite before any proof scan or remediation branch push
+              # so the demo proves the agent did not break normal app behavior.
+              echo "Running project tests after agent edits: ${REACHABLE_PROJECT_TEST_COMMAND:-go test ./...}"
+              bash -lc "${REACHABLE_PROJECT_TEST_COMMAND:-go test ./...}"
+            else
+              echo "Skipping project tests after agent edits (run_project_tests=false)."
+            fi
 
             if [ "${REACHABLE_RESCAN_STRATEGY:-final}" != "each_batch" ]; then
               echo "Reachable proof rescan deferred until final batch (rescan_strategy=${REACHABLE_RESCAN_STRATEGY:-final})."
