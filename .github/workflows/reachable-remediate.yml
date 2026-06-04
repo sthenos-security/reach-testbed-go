@@ -276,9 +276,11 @@ jobs:
           if [ "$REACHABLE_LLM_PROVIDER" != "auto" ]; then
             provider_args+=(--ai-provider "$REACHABLE_LLM_PROVIDER")
           fi
+          scan_branch="${GITHUB_REF_NAME:-main}"
+          scan_commit="${GITHUB_SHA:-$(git rev-parse HEAD)}"
           # shellcheck disable=SC2206
           extra_args=($REACHABLE_SCAN_EXTRA_FLAGS)
-          reachctl scan . --ci --sarif .reachable/ci-artifacts/reachable.sarif "${provider_args[@]}" "${extra_args[@]}"
+          reachctl scan . --ci --branch "$scan_branch" --commit "$scan_commit" --sarif .reachable/ci-artifacts/reachable.sarif "${provider_args[@]}" "${extra_args[@]}"
           scan_end="$(date +%s)"
           echo "Reachable baseline scan duration: $((scan_end - scan_start))s"
           report_label="baseline"
@@ -477,7 +479,9 @@ jobs:
             fi
 
             batch_scan_start="$(date +%s)"
-            reachctl scan . --ci --sarif ".reachable/ci-artifacts/reachable-after-batch-${batch}.sarif" "${provider_args[@]}" "${extra_args[@]}"
+            proof_commit="$(git rev-parse HEAD)"
+            echo "Reachable proof scan target: branch=${REACHABLE_REMEDIATION_BRANCH} commit=${proof_commit}"
+            reachctl scan . --ci --branch "$REACHABLE_REMEDIATION_BRANCH" --commit "$proof_commit" --sarif ".reachable/ci-artifacts/reachable-after-batch-${batch}.sarif" "${provider_args[@]}" "${extra_args[@]}"
             batch_scan_end="$(date +%s)"
             echo "Reachable proof scan duration for batch $batch: $((batch_scan_end - batch_scan_start))s"
             bash ci/collect-reachable-report.sh "after-batch-${batch}" .reachable/ci-artifacts
@@ -499,7 +503,9 @@ jobs:
 
           if [ "${REACHABLE_RESCAN_STRATEGY:-final}" != "each_batch" ]; then
             final_scan_start="$(date +%s)"
-            reachctl scan . --ci --sarif ".reachable/ci-artifacts/reachable-after-final.sarif" "${provider_args[@]}" "${extra_args[@]}"
+            proof_commit="$(git rev-parse HEAD)"
+            echo "Reachable final proof scan target: branch=${REACHABLE_REMEDIATION_BRANCH} commit=${proof_commit}"
+            reachctl scan . --ci --branch "$REACHABLE_REMEDIATION_BRANCH" --commit "$proof_commit" --sarif ".reachable/ci-artifacts/reachable-after-final.sarif" "${provider_args[@]}" "${extra_args[@]}"
             final_scan_end="$(date +%s)"
             echo "Reachable final proof scan duration: $((final_scan_end - final_scan_start))s"
             bash ci/collect-reachable-report.sh "after-final" .reachable/ci-artifacts
