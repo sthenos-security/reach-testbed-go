@@ -443,6 +443,9 @@ jobs:
             set -e
             if [ "$agent_status" -ne 0 ]; then
               echo "Coding agent failed for batch $batch with exit code $agent_status." >&2
+              echo "Sanitized agent CLI diagnostics:" >&2
+              grep -Eai '(^error:|not found|unknown option|unexpected argument|permission|auth|api key|usage:|failed|invalid)' \
+                "$agent_log" | tail -30 >&2 || true
               echo "Agent transcript is retained only in the private runner directory and is not uploaded." >&2
               exit "$agent_status"
             fi
