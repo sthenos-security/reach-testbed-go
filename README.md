@@ -13,7 +13,7 @@ CI/CD scanning, agentic remediation, and DB-backed post-fix proof.
 | Question | Answer |
 |----------|--------|
 | What is this repo? | A controlled vulnerable Go application used to demonstrate Reachable CI scanning, autonomous remediation, and DB-backed proof that a remediation branch is clean. |
-| What do I configure? | Add one AI key as a repository secret: `OPENAI_API_KEY` for `codex-openai`, or `ANTHROPIC_API_KEY` for `claude-anthropic`. Optional workflow inputs are listed below. |
+| What do I configure? | Add one AI key as a repository secret: `OPENAI_API_KEY` for `codex-openai` / Codex (OpenAI), or `ANTHROPIC_API_KEY` for `claude-anthropic` / Claude Code (Anthropic). Optional workflow inputs are listed below. |
 | Where is the CI pipeline? | [.github/workflows/reachable-remediate.yml](.github/workflows/reachable-remediate.yml). That workflow scans, optionally remediates, rescans, verifies the DB proof, and publishes sanitized evidence. |
 | Where do I run it? | GitHub Actions → [Reachable Remediation Template](https://github.com/sthenos-security/reach-testbed-go/actions/workflows/reachable-remediate.yml). |
 | Where are the verdict and artifacts? | [Public proof page](https://sthenos-security.github.io/reach-testbed-go/) and [published artifacts](https://sthenos-security.github.io/reach-testbed-go/#artifacts). |
@@ -114,8 +114,8 @@ The demo supports two simple CI lanes:
 
 | Lane | Secret | Agent |
 |------|--------|-------|
-| `codex-openai` | `OPENAI_API_KEY` | Codex |
-| `claude-anthropic` | `ANTHROPIC_API_KEY` | Claude Code |
+| `codex-openai` | `OPENAI_API_KEY` | Codex (OpenAI) |
+| `claude-anthropic` | `ANTHROPIC_API_KEY` | Claude Code (Anthropic) |
 
 The workflow inputs are the operational guardrails. They define whether the
 run only scans, creates a remediation branch, verifies an existing branch, or

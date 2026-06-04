@@ -272,6 +272,10 @@ def _expected_demo_summary(*, artifact_dir: Path) -> dict[str, Any]:
         "after": after_ctx["meta"],
         "baseline_ai": baseline_ai,
         "after_ai": after_ai,
+        "observed": {
+            "before": _db_observed_scan(baseline_ctx),
+            "after": _db_observed_scan(after_ctx),
+        },
         "evidence_source": "repo.db",
     }
 
@@ -500,6 +504,116 @@ def _db_ai_usage_summary(ctx: dict[str, Any]) -> dict[str, Any]:
         "cost_usd": float(row[3] or 0.0),
         "duration_seconds": float(row[4] or 0.0) / 1000.0,
     }
+
+
+def _db_observed_scan(ctx: dict[str, Any]) -> dict[str, Any]:
+    """Return public, observed DB findings for one concrete scan.
+
+    This intentionally does not compare against the expected contract and does
+    not read SARIF. It is the customer-facing "what did this scan report?"
+    view for the vulnerable baseline and the remediated proof scan.
+    """
+    conn = sqlite3.connect(Path(ctx["db_path"]))
+    conn.row_factory = sqlite3.Row
+    scan_id = int(ctx["scan_id"])
+    attacker = _attacker_map(conn, scan_id)
+    rows = conn.execute(
+        """
+        SELECT id, signal_type, finding_id, display_id, file_path, line_number,
+               severity, title, description, app_reachability, cwe_id, cve_id,
+               secret_type, pii_type, package_name, package_version, scanner,
+               rule_id, risk_level, prod_status, remediation_kind,
+               remediation_target, remediation_action, synthesis_hints_json,
+               exploit_verdict_json
+          FROM signals
+         WHERE scan_id = ?
+           AND COALESCE(prod_status, 'UNKNOWN') != 'NON_PROD'
+         ORDER BY
+               CASE UPPER(COALESCE(risk_level, severity, 'UNKNOWN'))
+                 WHEN 'CRITICAL' THEN 0 WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2
+                 WHEN 'LOW' THEN 3 WHEN 'INFO' THEN 4 ELSE 5 END,
+               file_path,
+               line_number,
+               id
+        """,
+        (scan_id,),
+    ).fetchall()
+    public_rows: list[dict[str, Any]] = []
+    for raw in rows:
+        row = dict(raw)
+        path = _normalize_demo_path(str(row.get("file_path") or ""))
+        line = int(row.get("line_number") or 0)
+        row["normalized_path"] = path
+        row["line_number"] = line
+        row["attacker"] = attacker.get((_db_family(row), path, line), {})
+        public_rows.append(_observed_public_row(row))
+    public_rows.sort(key=_observed_sort_key)
+    return {
+        "meta": ctx["meta"],
+        "db_total_findings": _safe_int((ctx.get("meta") or {}).get("total_findings")),
+        "production_rows": len(public_rows),
+        "release_blockers": sum(1 for row in public_rows if row.get("blocks_release")),
+        "rows": public_rows,
+    }
+
+
+def _observed_public_row(row: dict[str, Any]) -> dict[str, Any]:
+    risk = str(row.get("risk_level") or row.get("severity") or "UNKNOWN").upper()
+    reachability = str(row.get("app_reachability") or "UNKNOWN").upper()
+    exploitability = _signal_exploitability(row)
+    signal_type = str(row.get("signal_type") or "other").upper()
+    location = _format_location(row)
+    return {
+        "id": row.get("display_id") or row.get("cve_id") or row.get("cwe_id") or row.get("finding_id") or row.get("rule_id") or signal_type,
+        "signal_type": signal_type,
+        "risk": risk,
+        "reachability": reachability,
+        "exploitability": exploitability,
+        "prod_status": str(row.get("prod_status") or "UNKNOWN").upper(),
+        "blocks_release": _signal_blocks_remediation(row),
+        "location": location,
+        "package": _package_label(row),
+        "message": str(row.get("title") or row.get("description") or row.get("rule_id") or ""),
+    }
+
+
+def _signal_exploitability(row: dict[str, Any]) -> str:
+    attacker = row.get("attacker") if isinstance(row.get("attacker"), dict) else {}
+    if attacker:
+        if str(attacker.get("error") or "").strip():
+            return "ATTACK ERROR"
+        exploitable = str(attacker.get("exploitable") or "").strip().lower()
+        if exploitable in {"1", "true", "yes", "exploitable"}:
+            return "EXPLOITABLE"
+        if exploitable in {"0", "false", "no", "not_exploitable", "defended"}:
+            return "DEFENDED"
+        return "UNCERTAIN"
+    reachability = str(row.get("app_reachability") or "").upper().replace("-", "_").replace(" ", "_")
+    if reachability in DEFENDED_STATES:
+        return "DEFENDED"
+    return "NOT ATTACKED"
+
+
+def _observed_sort_key(row: dict[str, Any]) -> tuple[int, int, str, str]:
+    blocker_rank = 0 if row.get("blocks_release") else 1
+    risk_rank = RISK_ORDER.get(str(row.get("risk") or "UNKNOWN").upper(), 9)
+    return (blocker_rank, risk_rank, str(row.get("signal_type") or ""), str(row.get("location") or ""))
+
+
+def _package_label(row: dict[str, Any]) -> str:
+    package = str(row.get("package_name") or "")
+    version = str(row.get("package_version") or "")
+    if package and version:
+        return f"{package}@{version}"
+    return package
+
+
+def _format_location(row: dict[str, Any]) -> str:
+    path = str(row.get("normalized_path") or _normalize_demo_path(str(row.get("file_path") or "")))
+    line = int(row.get("line_number") or 0)
+    if path and line:
+        return f"{path}:{line}"
+    return path
 
 
 def _attacker_map(conn: sqlite3.Connection, scan_id: int) -> dict[tuple[str, str, int], dict[str, Any]]:
@@ -1048,6 +1162,9 @@ def _render_html(*, summary: dict[str, Any], generated_at: str, page_url: str, c
     expected_rows = "\n".join(_expected_demo_row(item) for item in expected_demo.get("rows") or [])
     if not expected_rows:
         expected_rows = '<tr><td colspan="9">No checked-in expected baseline contract was found.</td></tr>'
+    observed = expected_demo.get("observed") if isinstance(expected_demo.get("observed"), dict) else {}
+    observed_before = observed.get("before") if isinstance(observed.get("before"), dict) else {}
+    observed_after = observed.get("after") if isinstance(observed.get("after"), dict) else {}
     artifact_links = _artifact_links(summary.get("artifacts") or [], compliance)
     expected_status = "Clean" if expected_demo.get("clean") else "Needs review"
     baseline_meta = expected_demo.get("baseline") if isinstance(expected_demo.get("baseline"), dict) else {}
@@ -1094,6 +1211,17 @@ def _render_html(*, summary: dict[str, Any], generated_at: str, page_url: str, c
     .tabs {{ display:flex; flex-wrap:wrap; gap:8px; margin:18px 0 22px; }}
     .tabs a {{ border:1px solid var(--line); border-radius:999px; padding:8px 12px; text-decoration:none; background:#101923; color:var(--fg); }}
     .tabs a:hover {{ border-color:var(--accent); color:var(--accent); }}
+    .scan-tabs {{ margin-top:12px; }}
+    .scan-tabs input {{ position:absolute; opacity:0; pointer-events:none; }}
+    .scan-tab-labels {{ display:flex; flex-wrap:wrap; gap:8px; margin:12px 0 14px; }}
+    .scan-tab-labels label {{ border:1px solid var(--line); border-radius:999px; padding:9px 13px; cursor:pointer; background:#101923; color:var(--fg); }}
+    #scan-before:checked ~ .scan-tab-labels label[for="scan-before"],
+    #scan-after:checked ~ .scan-tab-labels label[for="scan-after"] {{ border-color:var(--accent); color:#0d201a; background:var(--accent); }}
+    .scan-panel {{ display:none; }}
+    #scan-before:checked ~ .scan-before,
+    #scan-after:checked ~ .scan-after {{ display:block; }}
+    .table-scroll {{ overflow-x:auto; border:1px solid var(--line); border-radius:8px; }}
+    .table-scroll table {{ border:0; border-radius:0; min-width:980px; }}
     table {{ width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; }}
     th, td {{ padding:10px 12px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; font-size:14px; }}
     th {{ color:#dce7ee; background:#111b26; }}
@@ -1135,6 +1263,7 @@ def _render_html(*, summary: dict[str, Any], generated_at: str, page_url: str, c
       </div>
     </section>
     <nav class="tabs" aria-label="Reachable report sections">
+      <a href="#scan-output">Before / After Scans</a>
       <a href="#expected">Expected Fix Proof</a>
       <a href="#run-evidence">Run Evidence</a>
       <a href="#findings">Remaining Findings</a>
@@ -1146,6 +1275,24 @@ def _render_html(*, summary: dict[str, Any], generated_at: str, page_url: str, c
       <h2>Sanitized Artifacts</h2>
       <p class="muted">These are convenience exports. The public page does not publish the private remediation bundle, prompt text, generated rules, agent transcript, raw witnesses, or local databases.</p>
       <div class="artifact-list">{artifact_links}</div>
+    </section>
+    <section class="card" id="scan-output">
+      <h2>Observed Scan Output</h2>
+      <p>This is the direct database view of the two scans in the demo run. It does not compare against the expected contract and does not use SARIF. Scan 1 is the intentionally vulnerable baseline. Scan 2 is the remediation branch proof scan.</p>
+      <div class="scan-tabs">
+        <input type="radio" name="scan-view" id="scan-before" checked>
+        <input type="radio" name="scan-view" id="scan-after">
+        <div class="scan-tab-labels">
+          <label for="scan-before">Scan 1: Before</label>
+          <label for="scan-after">Scan 2: Remediated</label>
+        </div>
+        <div class="scan-panel scan-before">
+          {_observed_scan_panel("Scan 1: Before remediation", observed_before)}
+        </div>
+        <div class="scan-panel scan-after">
+          {_observed_scan_panel("Scan 2: Remediated proof", observed_after)}
+        </div>
+      </div>
     </section>
     <section class="card">
       <h2 id="expected">Demo Contract: Expected Vulnerabilities Fixed</h2>
@@ -1264,6 +1411,51 @@ def _run_evidence_table(evidence: dict[str, Any]) -> str:
         for label, value in rows
     )
     return f"<table><tbody>{body}</tbody></table>"
+
+
+def _observed_scan_panel(title: str, observed: dict[str, Any]) -> str:
+    if not observed:
+        return '<p class="bad">Observed scan data was not available from repo.db.</p>'
+    meta = observed.get("meta") if isinstance(observed.get("meta"), dict) else {}
+    rows = observed.get("rows") if isinstance(observed.get("rows"), list) else []
+    table_rows = "\n".join(_observed_scan_row(item) for item in rows)
+    if not table_rows:
+        table_rows = '<tr><td colspan="8">No production DB findings were reported for this scan.</td></tr>'
+    return f"""
+      <div class="subgrid">
+        {_card("DB scan", _scan_label(meta))}
+        {_card("Branch", str(meta.get("branch") or ""))}
+        {_card("Commit", str(meta.get("commit_short") or str(meta.get("commit_hash") or "")[:8]))}
+        {_card("Timestamp", str(meta.get("timestamp") or ""))}
+        {_card("Raw DB findings", str(_safe_int(observed.get("db_total_findings"))))}
+        {_card("Production rows listed", str(_safe_int(observed.get("production_rows"))))}
+        {_card("Release blockers", str(_safe_int(observed.get("release_blockers"))))}
+      </div>
+      <h3>{html.escape(title)}</h3>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Signal</th><th>Risk</th><th>Reachability</th><th>Exploitability</th><th>Release blocker</th><th>Location</th><th>Package</th><th>Message</th></tr></thead>
+          <tbody>{table_rows}</tbody>
+        </table>
+      </div>
+    """
+
+
+def _observed_scan_row(item: dict[str, Any]) -> str:
+    blocker = "Yes" if item.get("blocks_release") else "No"
+    blocker_class = "bad" if item.get("blocks_release") else "reachable"
+    return (
+        "<tr>"
+        f"<td><code>{html.escape(str(item.get('id') or ''))}</code><br><span class=\"muted\">{html.escape(str(item.get('signal_type') or ''))}</span></td>"
+        f"<td>{html.escape(str(item.get('risk') or ''))}</td>"
+        f"<td>{html.escape(str(item.get('reachability') or ''))}</td>"
+        f"<td>{html.escape(str(item.get('exploitability') or ''))}</td>"
+        f"<td><span class=\"{blocker_class}\">{html.escape(blocker)}</span></td>"
+        f"<td><code>{html.escape(str(item.get('location') or ''))}</code></td>"
+        f"<td>{html.escape(str(item.get('package') or ''))}</td>"
+        f"<td>{html.escape(str(item.get('message') or ''))}</td>"
+        "</tr>"
+    )
 
 
 def _demo_ai_economics(expected_demo: dict[str, Any]) -> dict[str, Any]:

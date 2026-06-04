@@ -98,18 +98,19 @@
 
   <path class="line" d="M1560 450 V538"/>
 
-  <rect x="1260" y="560" width="450" height="205" class="agentCard"/>
+  <rect x="1260" y="560" width="450" height="260" class="agentCard"/>
   <text x="1298" y="610" class="tiny" fill="#9debdc">AGENT EXECUTOR</text>
-  <text x="1298" y="654" class="label text">Codex</text>
-  <text x="1298" y="684" class="label text">or Claude</text>
-  <text x="1298" y="720" class="body muted">edits review branch</text>
-  <text x="1298" y="748" class="body muted">from bounded task</text>
-  <rect x="1298" y="762" width="92" height="36" class="badge"/>
-  <text x="1316" y="786" class="mono" fill="#b9c8dc">agent</text>
-  <rect x="1408" y="762" width="96" height="36" class="badge"/>
-  <text x="1424" y="786" class="mono" fill="#b9c8dc">cost</text>
-  <rect x="1522" y="762" width="96" height="36" class="badge"/>
-  <text x="1540" y="786" class="mono" fill="#b9c8dc">audit</text>
+  <text x="1298" y="654" class="label text">Codex (OpenAI)</text>
+  <text x="1298" y="684" class="label text">or Claude Code</text>
+  <text x="1298" y="714" class="body muted">(Anthropic)</text>
+  <text x="1298" y="746" class="body muted">edits review branch</text>
+  <text x="1298" y="772" class="body muted">from bounded task</text>
+  <rect x="1298" y="790" width="92" height="36" class="badge"/>
+  <text x="1316" y="814" class="mono" fill="#b9c8dc">agent</text>
+  <rect x="1408" y="790" width="96" height="36" class="badge"/>
+  <text x="1424" y="814" class="mono" fill="#b9c8dc">cost</text>
+  <rect x="1522" y="790" width="96" height="36" class="badge"/>
+  <text x="1540" y="814" class="mono" fill="#b9c8dc">audit</text>
 
   <path class="line" d="M1246 662 H1134"/>
 
