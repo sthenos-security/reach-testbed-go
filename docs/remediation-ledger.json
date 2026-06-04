@@ -4,7 +4,6 @@
       "agent_log": ".reachable/private-agent-logs/agent-batch-1.log",
       "agent_log_public_artifact": false,
       "batch": 1,
-      "bundle_path": ".reachable/remediation-bundle/bundle.json",
       "selected_packages": [
         "golang.org/x/text"
       ],

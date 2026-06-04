@@ -216,7 +216,6 @@ def main() -> int:
         attempts.append(
             {
                 "batch": batch,
-                "bundle_path": str(bundle_path),
                 "selected_rule_count": bundle.get("selected_rule_count")
                 or len(bundle.get("selected_rules") or []),
                 "selected_rules": _rule_summary(bundle),

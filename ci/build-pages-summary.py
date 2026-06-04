@@ -1124,7 +1124,7 @@ def _render_html(*, summary: dict[str, Any], generated_at: str, page_url: str, c
         {_card("Found on vulnerable main", str(expected_demo.get("baseline_found", 0)))}
         {_card("Fixed on remediation branch", str(expected_demo.get("fixed", 0)))}
         {_card("Still present", str(expected_demo.get("still_present", 0)))}
-        {_card("Final actionable findings", str(expected_demo.get("after_total") if expected_demo.get("after_total") is not None else "not run"))}
+        {_card("Final release blockers", str(expected_demo.get("after_total") if expected_demo.get("after_total") is not None else "not run"))}
         {_card("AI cost estimate", _money(ai_economics.get("cost_usd")))}
         {_card("AI tokens", _number(ai_economics.get("tokens_total")))}
       </div>
@@ -1142,6 +1142,11 @@ def _render_html(*, summary: dict[str, Any], generated_at: str, page_url: str, c
       <a href="#remediation">Remediation</a>
       <a href="#artifacts">Artifacts</a>
     </nav>
+    <section class="card" id="artifacts">
+      <h2>Sanitized Artifacts</h2>
+      <p class="muted">These are convenience exports. The public page does not publish the private remediation bundle, prompt text, generated rules, agent transcript, raw witnesses, or local databases.</p>
+      <div class="artifact-list">{artifact_links}</div>
+    </section>
     <section class="card">
       <h2 id="expected">Demo Contract: Expected Vulnerabilities Fixed</h2>
       <p><strong>{html.escape(expected_status)}:</strong> This table is the demo contract. Each row is an expected vulnerable fixture. “Fixed” means it was present in the vulnerable baseline database and absent from the remediation proof database.</p>
@@ -1155,7 +1160,7 @@ def _render_html(*, summary: dict[str, Any], generated_at: str, page_url: str, c
       <p>This section proves the CI run used an installed Reachable version and either restored or initialized the Reachable cache. The raw proof files are sanitized JSON artifacts; the demo verdict still comes from the scan database.</p>
       {_run_evidence_table(run_evidence_summary)}
     </section>
-    <h2 id="findings">Remaining Production Actionable Findings</h2>
+    <h2 id="findings">Remaining Release Blockers</h2>
     <div class="cards">
       {_card("Selected public findings", str(summary.get("total", 0)))}
       {_card("Exploitable", str(by_reach.get("EXPLOITABLE", 0)))}
@@ -1169,12 +1174,12 @@ def _render_html(*, summary: dict[str, Any], generated_at: str, page_url: str, c
       <thead><tr><th>Signal</th><th>Reachability</th><th>Risk</th><th>Families</th><th>Package</th><th>Fix</th><th>Location</th><th>Message</th></tr></thead>
       <tbody>{priority_rows}</tbody>
     </table>
-    <h2 id="defended">Production Actionable: Defended / Defendable</h2>
+    <h2 id="defended">Defended / Defendable Evidence</h2>
     <table>
       <thead><tr><th>Signal</th><th>Reachability</th><th>Risk</th><th>Families</th><th>Package</th><th>Fix</th><th>Location</th><th>Message</th></tr></thead>
       <tbody>{defended_rows}</tbody>
     </table>
-    <h2>All Production Actionable Signals</h2>
+    <h2>All Release-Blocking Signals</h2>
     <table>
       <thead><tr><th>Signal</th><th>Reachability</th><th>Risk</th><th>Families</th><th>Package</th><th>Fix</th><th>Location</th><th>Message</th></tr></thead>
       <tbody>{rows}</tbody>
@@ -1185,9 +1190,6 @@ def _render_html(*, summary: dict[str, Any], generated_at: str, page_url: str, c
       <thead><tr><th>Rule</th><th>Package</th><th>Signals</th><th>Suggested fix</th></tr></thead>
       <tbody>{rule_rows}</tbody>
     </table>
-    <h2 id="artifacts">Sanitized Artifacts</h2>
-    <p class="muted">These are convenience exports. The public page does not publish the private remediation bundle, prompt text, generated rules, agent transcript, raw witnesses, or local databases.</p>
-    <div class="artifact-list">{artifact_links}</div>
     <p class="muted">Generated at {html.escape(generated_at)} for {html.escape(str(summary.get("repo") or ""))} / {html.escape(str(summary.get("ref") or ""))} / commit {html.escape(str(summary.get("sha") or ""))}. Page URL: {html.escape(page_url)}</p>
     <footer>Copyright © 2026 Sthenos Security, Inc. All rights reserved.</footer>
   </main>

@@ -59,7 +59,7 @@
         <div class="card"><div class="num">21</div><div class="label">Found on vulnerable main</div></div>
         <div class="card"><div class="num">21</div><div class="label">Fixed on remediation branch</div></div>
         <div class="card"><div class="num">0</div><div class="label">Still present</div></div>
-        <div class="card"><div class="num">0</div><div class="label">Final actionable findings</div></div>
+        <div class="card"><div class="num">0</div><div class="label">Final release blockers</div></div>
         <div class="card"><div class="num">$0.0531</div><div class="label">AI cost estimate</div></div>
         <div class="card"><div class="num">30,776</div><div class="label">AI tokens</div></div>
       </div>
@@ -75,6 +75,19 @@
       <a href="#remediation">Remediation</a>
       <a href="#artifacts">Artifacts</a>
     </nav>
+    <section class="card" id="artifacts">
+      <h2>Sanitized Artifacts</h2>
+      <p class="muted">These are convenience exports. The public page does not publish the private remediation bundle, prompt text, generated rules, agent transcript, raw witnesses, or local databases.</p>
+      <div class="artifact-list"><a href="https://github.com/sthenos-security/reach-testbed-go/security/code-scanning?query=category%3Areachable">Code scanning alerts</a>
+      <a href="https://github.com/sthenos-security/reach-testbed-go/actions/runs/26972297438">CI run</a>
+      <a href="reachable.sarif">SARIF compatibility export</a>
+      <a href="remediation-ledger.json">Sanitized remediation ledger</a>
+      <a href="db-remediation-verdict.json">DB remediation verdict</a>
+      <a href="expected-results.html">Expected issue contract</a>
+      <a href="summary.json">Summary JSON</a>
+      <a href="compliance.json">Compliance JSON</a>
+      <a href="compliance-narrative.json">Auditor narrative JSON</a></div>
+    </section>
     <section class="card">
       <h2 id="expected">Demo Contract: Expected Vulnerabilities Fixed</h2>
       <p><strong>Clean:</strong> This table is the demo contract. Each row is an expected vulnerable fixture. “Fixed” means it was present in the vulnerable baseline database and absent from the remediation proof database.</p>
@@ -125,7 +138,7 @@
 <tr><td><code>SECRET/github-pat</code><br><span class="muted">Token detected. Use a secrets manager (Vault, AWS Secrets Manager) for storage. Prefer short-lived tokens with automatic refresh. Implement proper token scoping and rotation.</span><br><a href="expected-results.html#expected-findings-table">Problem contract</a></td><td>INFO</td><td>NOT_REACHABLE</td><td>NOT ATTACKED</td><td><code>internal/handlers/secrets.go:11</code></td><td>Found</td><td>Not reported</td><td><span class="pill reachable">Fixed - no longer reported</span></td><td>Synthetic secret exposure is removed from release-blocking DB evidence.<details><summary>Details</summary><p>Token detected. Use a secrets manager (Vault, AWS Secrets Manager) for storage. Prefer short-lived tokens with automatic refresh. Implement proper token scoping and rotation.</p></details></td></tr></tbody>
       </table>
     </section>
-    <h2 id="findings">Remaining Production Actionable Findings</h2>
+    <h2 id="findings">Remaining Release Blockers</h2>
     <div class="cards">
       <div class="card"><div class="num">0</div><div class="label">Selected public findings</div></div>
       <div class="card"><div class="num">0</div><div class="label">Exploitable</div></div>
@@ -139,12 +152,12 @@
       <thead><tr><th>Signal</th><th>Reachability</th><th>Risk</th><th>Families</th><th>Package</th><th>Fix</th><th>Location</th><th>Message</th></tr></thead>
       <tbody><tr><td colspan="8">No exploitable or reachable findings were reported.</td></tr></tbody>
     </table>
-    <h2 id="defended">Production Actionable: Defended / Defendable</h2>
+    <h2 id="defended">Defended / Defendable Evidence</h2>
     <table>
       <thead><tr><th>Signal</th><th>Reachability</th><th>Risk</th><th>Families</th><th>Package</th><th>Fix</th><th>Location</th><th>Message</th></tr></thead>
       <tbody><tr><td colspan="8">No defended or defendable findings were included in the compatibility export.</td></tr></tbody>
     </table>
-    <h2>All Production Actionable Signals</h2>
+    <h2>All Release-Blocking Signals</h2>
     <table>
       <thead><tr><th>Signal</th><th>Reachability</th><th>Risk</th><th>Families</th><th>Package</th><th>Fix</th><th>Location</th><th>Message</th></tr></thead>
       <tbody><tr><td colspan="8">No release-blocking signals were reported.</td></tr></tbody>
@@ -166,17 +179,6 @@
 <tr><td><code>RCH-RULE-a755ac83</code></td><td></td><td></td><td></td></tr>
 <tr><td><code>RCH-RULE-7059753c</code></td><td></td><td></td><td></td></tr></tbody>
     </table>
-    <h2 id="artifacts">Sanitized Artifacts</h2>
-    <p class="muted">These are convenience exports. The public page does not publish the private remediation bundle, prompt text, generated rules, agent transcript, raw witnesses, or local databases.</p>
-    <div class="artifact-list"><a href="https://github.com/sthenos-security/reach-testbed-go/security/code-scanning?query=category%3Areachable">Code scanning alerts</a>
-      <a href="https://github.com/sthenos-security/reach-testbed-go/actions/runs/26972297438">CI run</a>
-      <a href="reachable.sarif">SARIF compatibility export</a>
-      <a href="remediation-ledger.json">Sanitized remediation ledger</a>
-      <a href="db-remediation-verdict.json">DB remediation verdict</a>
-      <a href="expected-results.html">Expected issue contract</a>
-      <a href="summary.json">Summary JSON</a>
-      <a href="compliance.json">Compliance JSON</a>
-      <a href="compliance-narrative.json">Auditor narrative JSON</a></div>
     <p class="muted">Generated at 2026-06-04T18:50:24.960843+00:00 for sthenos-security/reach-testbed-go / main / commit 8abd78310ce1a9f20fa6468725b802d297175743. Page URL: https://sthenos-security.github.io/reach-testbed-go/</p>
     <footer>Copyright © 2026 Sthenos Security, Inc. All rights reserved.</footer>
   </main>
