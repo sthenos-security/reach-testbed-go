@@ -8,6 +8,17 @@ CI/CD scanning, agentic remediation, and DB-backed post-fix proof.
 
 ![Reachable CI remediation flow](docs/remediation-flow.svg)
 
+## Start Here
+
+| Question | Answer |
+|----------|--------|
+| What is this repo? | A controlled vulnerable Go application used to demonstrate Reachable CI scanning, autonomous remediation, and DB-backed proof that a remediation branch is clean. |
+| What do I configure? | Add one AI key as a repository secret: `OPENAI_API_KEY` for `codex-openai`, or `ANTHROPIC_API_KEY` for `claude-anthropic`. Optional workflow inputs are listed below. |
+| Where is the CI pipeline? | [.github/workflows/reachable-remediate.yml](.github/workflows/reachable-remediate.yml). That workflow scans, optionally remediates, rescans, verifies the DB proof, and publishes sanitized evidence. |
+| Where do I run it? | GitHub Actions → [Reachable Remediation Template](https://github.com/sthenos-security/reach-testbed-go/actions/workflows/reachable-remediate.yml). |
+| Where are the verdict and artifacts? | [Public proof page](https://sthenos-security.github.io/reach-testbed-go/) and [published artifacts](https://sthenos-security.github.io/reach-testbed-go/#artifacts). |
+| What is the expected vulnerable contract? | [EXPECTED.md](EXPECTED.md) and [expected/baseline.json](expected/baseline.json). |
+
 ## Demo Verdict
 
 The public demo page is the release-facing proof view for the last published
@@ -96,7 +107,7 @@ The workflow must not publish raw remediation bundles, prompt text, generated
 rule packs, skills databases, fuzz or pentest prompts, agent transcripts, raw
 witness payloads, or local `repo.db` files.
 
-## Inputs And Guardrails
+## Agent Lanes And Workflow Inputs
 
 The demo supports two simple CI lanes:
 
@@ -105,11 +116,30 @@ The demo supports two simple CI lanes:
 | `codex-openai` | `OPENAI_API_KEY` | Codex |
 | `claude-anthropic` | `ANTHROPIC_API_KEY` | Claude Code |
 
-The workflow also includes kill switches for scan-only runs, remediation
-branch verification, pull-request creation, and bounded batch size. These are
-CI controls, not viewer-facing demo steps. The public report should make the
-selected branch, commit, scan number, and final proof state obvious without
-requiring the viewer to know the workflow inputs.
+The workflow inputs are the operational guardrails. They define whether the
+run only scans, creates a remediation branch, verifies an existing branch, or
+publishes fresh evidence.
+
+| Input | Default | Purpose |
+|-------|---------|---------|
+| `remediate` | `false` | Main kill switch. When false, CI scans and publishes evidence without changing code. |
+| `rescan_only` | `false` | Verifies `target_branch` as an existing branch; does not invoke an agent or create edits. |
+| `target_branch` | `main` | Baseline branch for normal runs, or the branch to verify when `rescan_only=true`. |
+| `remediation_mode` | `codex-openai` | Selects the agent lane and matching provider secret. |
+| `prompt_profile` | `balanced` | Controls how aggressively Reachable bundles remediation work. |
+| `signal_types` | `all` | Limits remediation to selected signal families, or leaves all families eligible. |
+| `max_batches` | `1` | Bounds the number of serialized agent remediation batches. |
+| `rescan_strategy` | `final` | Runs proof scans only at the end or after each batch. |
+| `scan_extra_flags` | empty | Optional extra scan flags for advanced test runs. |
+| `require_ai` | `true` | Fails early unless the selected provider key is configured. |
+| `fresh_scan` | `false` | Starts from an empty `~/.reachable` cache for a clean evidence run. |
+| `create_pr` | `true` | Opens a remediation pull request when code changes are successfully produced. |
+| `run_project_tests` | `true` | Runs the repository safety gate before proof scans. |
+| `project_test_command` | `go test ./...` | Command used for the post-agent safety gate. |
+
+The public report should make the selected branch, commit, scan number, final
+proof state, cache state, and artifact links obvious without requiring the
+viewer to know these inputs.
 
 ## Repository Layout
 
