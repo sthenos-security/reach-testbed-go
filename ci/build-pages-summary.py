@@ -125,12 +125,16 @@ def _load_json(path: Path) -> dict[str, Any]:
         return {"_error": f"failed to parse {path}: {exc}"}
 
 
+def _load_json_required(path: Path) -> dict[str, Any]:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
 def _expected_demo_summary(*, artifact_dir: Path) -> dict[str, Any]:
     expected_path = Path(__file__).resolve().parents[1] / "expected" / "baseline.json"
     if not expected_path.exists():
         raise FileNotFoundError(f"expected demo contract is required: {expected_path}")
 
-    expected = _load_json(expected_path)
+    expected = _load_json_required(expected_path)
     expected_rows = [_expected_row(tuple(item)) for item in ((expected.get("sarif") or {}).get("results") or [])]
     baseline_ctx = _scan_db_context(artifact_dir / "reports" / "baseline" / "scan-path.txt")
     after_ctx = _scan_db_context(artifact_dir / "reports" / "after-final" / "scan-path.txt")
