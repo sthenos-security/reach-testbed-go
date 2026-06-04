@@ -9,7 +9,7 @@
   "artifacts": [
     {
       "href": "reachable.sarif",
-      "label": "Selected SARIF"
+      "label": "SARIF compatibility export"
     },
     {
       "href": "remediation-ledger.json",
@@ -1175,7 +1175,7 @@
         "path": "internal/handlers/secrets.go",
         "problem_ref": "expected-results.html#expected-findings-table",
         "prod_status": "UNKNOWN",
-        "remediation_action": "Synthetic secret exposure is removed from production-actionable posture.",
+        "remediation_action": "Synthetic secret exposure is removed from production-actionable DB evidence.",
         "rule_id": "SECRET/github-pat",
         "signal_description": "Token detected. Use a secrets manager (Vault, AWS Secrets Manager) for storage. Prefer short-lived tokens with automatic refresh. Implement proper token scoping and rotation.",
         "signal_title": "Token detected. Use a secrets manager (Vault, AWS Secrets Manager) for storage. Prefer short-lived tokens with automatic refresh. Implement proper token scoping and rotation.",

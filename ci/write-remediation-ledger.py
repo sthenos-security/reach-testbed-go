@@ -141,7 +141,7 @@ def _write_markdown(path: Path, ledger: dict[str, Any]) -> None:
         "",
         "## Findings",
         "",
-        "| Scan | SARIF results | Error | Warning | Note |",
+        "| Scan | Compatibility export results | Error | Warning | Note |",
         "|------|---------------|-------|---------|------|",
     ]
 
@@ -231,23 +231,29 @@ def main() -> int:
     if rescan_only:
         if int(proof_scan.get("results") or 0) == 0:
             status = "verified"
-            message = f"The `{proof_scan.get('label')}` verification SARIF report contains no actionable findings."
+            message = (
+                f"The `{proof_scan.get('label')}` compatibility export contains no actionable findings. "
+                "The demo verdict is still determined by the DB proof gate."
+            )
         else:
             status = "verification_failed"
             message = (
-                f"The `{proof_scan.get('label')}` verification SARIF report still contains actionable findings. "
+                f"The `{proof_scan.get('label')}` compatibility export still contains actionable findings. "
                 "Run another remediation batch or send the branch for human review."
             )
     elif not attempts:
         status = "scan_only"
-        message = "No remediation was attempted. Review baseline SARIF for current actionable findings."
+        message = "No remediation was attempted. Review the DB-backed baseline report for current actionable findings."
     elif int(proof_scan.get("results") or 0) == 0:
         status = "success"
-        message = f"The `{proof_scan.get('label')}` SARIF report contains no actionable findings."
+        message = (
+            f"The `{proof_scan.get('label')}` compatibility export contains no actionable findings. "
+            "The demo verdict is still determined by the DB proof gate."
+        )
     else:
         status = "needs_retry_or_human_review"
         message = (
-            f"The `{proof_scan.get('label')}` SARIF report still contains actionable findings. "
+            f"The `{proof_scan.get('label')}` compatibility export still contains actionable findings. "
             "Generate another prompt from the updated branch state, or send the branch for human review."
         )
 

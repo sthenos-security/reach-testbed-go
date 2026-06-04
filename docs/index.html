@@ -121,7 +121,7 @@
 <tr><td><code>CWE/200</code><br><span class="muted">Internal error details written to HTTP response — exposes server internals (table names, paths, stack traces) to clients. Return a generic error message and log the detail server-side.
 </span><br><a href="expected-results.html#expected-findings-table">Problem contract</a></td><td>MEDIUM</td><td>REACHABLE</td><td>DEFENDED</td><td><code>internal/handlers/suspicious.go:30</code></td><td>Found</td><td>Not reported</td><td><span class="pill reachable">Fixed - no longer reported</span></td><td>Internal error details are no longer exposed to callers where remediation applied.<details><summary>Details</summary><p>Internal error details written to HTTP response — exposes server internals (table names, paths, stack traces) to clients. Return a generic error message and log the detail server-side.
 </p></details></td></tr>
-<tr><td><code>SECRET/github-pat</code><br><span class="muted">Token detected. Use a secrets manager (Vault, AWS Secrets Manager) for storage. Prefer short-lived tokens with automatic refresh. Implement proper token scoping and rotation.</span><br><a href="expected-results.html#expected-findings-table">Problem contract</a></td><td>INFO</td><td>NOT_REACHABLE</td><td>NOT ATTACKED</td><td><code>internal/handlers/secrets.go:11</code></td><td>Found</td><td>Not reported</td><td><span class="pill reachable">Fixed - no longer reported</span></td><td>Synthetic secret exposure is removed from production-actionable posture.<details><summary>Details</summary><p>Token detected. Use a secrets manager (Vault, AWS Secrets Manager) for storage. Prefer short-lived tokens with automatic refresh. Implement proper token scoping and rotation.</p></details></td></tr></tbody>
+<tr><td><code>SECRET/github-pat</code><br><span class="muted">Token detected. Use a secrets manager (Vault, AWS Secrets Manager) for storage. Prefer short-lived tokens with automatic refresh. Implement proper token scoping and rotation.</span><br><a href="expected-results.html#expected-findings-table">Problem contract</a></td><td>INFO</td><td>NOT_REACHABLE</td><td>NOT ATTACKED</td><td><code>internal/handlers/secrets.go:11</code></td><td>Found</td><td>Not reported</td><td><span class="pill reachable">Fixed - no longer reported</span></td><td>Synthetic secret exposure is removed from production-actionable DB evidence.<details><summary>Details</summary><p>Token detected. Use a secrets manager (Vault, AWS Secrets Manager) for storage. Prefer short-lived tokens with automatic refresh. Implement proper token scoping and rotation.</p></details></td></tr></tbody>
       </table>
     </section>
     <h2 id="findings">Remaining Production Actionable Findings</h2>
@@ -133,7 +133,7 @@
       <div class="card"><div class="num">0</div><div class="label">Defended</div></div>
       <div class="card"><div class="num">0</div><div class="label">Suspicious packages</div></div>
     </div>
-    <p class="muted">This section is the selected public posture export for code-scanning surfaces. The demo pass/fail proof above is DB-backed.</p>
+    <p class="muted">This section is a selected public DB summary for release review. Platform exports such as SARIF are linked only as compatibility reports; the demo pass/fail proof above is DB-backed.</p>
     <table>
       <thead><tr><th>Signal</th><th>Reachability</th><th>Risk</th><th>Families</th><th>Package</th><th>Fix</th><th>Location</th><th>Message</th></tr></thead>
       <tbody><tr><td colspan="8">No exploitable or reachable findings were reported.</td></tr></tbody>
@@ -141,7 +141,7 @@
     <h2 id="defended">Production Actionable: Defended / Defendable</h2>
     <table>
       <thead><tr><th>Signal</th><th>Reachability</th><th>Risk</th><th>Families</th><th>Package</th><th>Fix</th><th>Location</th><th>Message</th></tr></thead>
-      <tbody><tr><td colspan="8">No defended or defendable findings were included in this public SARIF.</td></tr></tbody>
+      <tbody><tr><td colspan="8">No defended or defendable findings were included in the compatibility export.</td></tr></tbody>
     </table>
     <h2>All Production Actionable Signals</h2>
     <table>
@@ -169,7 +169,7 @@
     <p class="muted">These are convenience exports. The public page does not publish the private remediation bundle, prompt text, generated rules, agent transcript, raw witnesses, or local databases.</p>
     <div class="artifact-list"><a href="https://github.com/sthenos-security/reach-testbed-go/security/code-scanning?query=category%3Areachable">Code scanning alerts</a>
       <a href="https://github.com/sthenos-security/reach-testbed-go/actions/runs/26972297438">CI run</a>
-      <a href="reachable.sarif">Selected SARIF</a>
+      <a href="reachable.sarif">SARIF compatibility export</a>
       <a href="remediation-ledger.json">Sanitized remediation ledger</a>
       <a href="db-remediation-verdict.json">DB remediation verdict</a>
       <a href="expected-results.html">Expected issue contract</a>

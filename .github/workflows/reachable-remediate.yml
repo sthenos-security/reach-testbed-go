@@ -55,6 +55,10 @@ on:
         description: "Fail early unless a Reachable scan/enrichment LLM key is configured"
         type: boolean
         default: true
+      fresh_scan:
+        description: "Start from an empty ~/.reachable cache for a clean evidence run"
+        type: boolean
+        default: false
       create_pr:
         description: "Open a pull request after successful remediation"
         type: boolean
@@ -94,6 +98,7 @@ jobs:
       REACHABLE_RESCAN_STRATEGY: ${{ inputs.rescan_strategy }}
       REACHABLE_SCAN_EXTRA_FLAGS: ${{ inputs.scan_extra_flags }}
       REACHABLE_REQUIRE_AI: ${{ inputs.require_ai }}
+      REACHABLE_FRESH_SCAN: ${{ inputs.fresh_scan }}
       REACHABLE_CREATE_PR: ${{ inputs.create_pr }}
       REACHABLE_RUN_PROJECT_TESTS: ${{ inputs.run_project_tests }}
       REACHABLE_PROJECT_TEST_COMMAND: ${{ inputs.project_test_command }}
@@ -134,9 +139,14 @@ jobs:
 
       - name: Prepare Reachable cache directories
         run: |
+          if [ "${REACHABLE_FRESH_SCAN:-false}" = "true" ]; then
+            echo "Reachable fresh scan requested: deleting ~/.reachable before restore/install."
+            rm -rf "$HOME/.reachable"
+          fi
           mkdir -p "$HOME/.reachable"
 
       - name: Restore Reachable cache
+        if: ${{ !inputs.fresh_scan }}
         id: reachable-cache
         uses: actions/cache/restore@v4
         with:
@@ -159,9 +169,13 @@ jobs:
           echo "  tracked files: $(git ls-files | wc -l | xargs)"
           echo "  checkout size: $(du -sh . | awk '{print $1}')"
           echo "Reachable cache evidence:"
+          echo "  fresh scan requested: ${REACHABLE_FRESH_SCAN:-false}"
           echo "  primary key: ${{ steps.reachable-cache.outputs.cache-primary-key }}"
           echo "  matched key: ${{ steps.reachable-cache.outputs.cache-matched-key }}"
-          if [ -n "${{ steps.reachable-cache.outputs.cache-matched-key }}" ]; then
+          if [ "${REACHABLE_FRESH_SCAN:-false}" = "true" ]; then
+            echo "  REACHABLE_CACHE_RESTORED=false"
+            echo "  install mode: intentionally fresh ~/.reachable cache"
+          elif [ -n "${{ steps.reachable-cache.outputs.cache-matched-key }}" ]; then
             echo "  REACHABLE_CACHE_RESTORED=true"
             echo "  install mode: overlay/upgrade existing ~/.reachable cache"
           else
@@ -356,7 +370,7 @@ jobs:
 
           sarif = json.loads(sarif_path.read_text(encoding="utf-8"))
           results = sum(len(run.get("results") or []) for run in sarif.get("runs") or [])
-          print(f"Reachable rescan-only verification SARIF results: {results}")
+          print(f"Reachable rescan-only compatibility export results: {results}")
           if results:
               print(
                   "Reachable rescan-only verification failed: the selected branch still has production actionable findings.",
@@ -547,7 +561,7 @@ jobs:
         if: ${{ inputs.remediate && !inputs.rescan_only }}
         run: |
           # Demo verdict is DB-backed. SARIF is an export artifact and may
-          # include defended posture rows; it is not the source of truth.
+          # include defended compatibility rows; it is not the source of truth.
           python3 ci/check-db-remediation-proof.py .reachable/ci-artifacts
 
       - name: Commit remediation branch
@@ -771,7 +785,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: ~/.reachable
-          key: ${{ steps.reachable-cache.outputs.cache-primary-key }}
+          key: reachable-${{ runner.os }}-${{ github.repository_id }}-${{ env.REACHABLE_VERSION }}-${{ hashFiles('**/go.sum', '**/go.mod', '**/package-lock.json', '**/pnpm-lock.yaml', '**/yarn.lock', '**/requirements*.txt', '**/poetry.lock', '**/uv.lock', '**/Pipfile.lock', '**/Cargo.lock', '**/Gemfile.lock', '**/pom.xml', '**/build.gradle*', '**/*.csproj') }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Configure results publishing to GitHub Pages
         if: always() && github.event_name != 'pull_request' && inputs.remediate && !inputs.rescan_only

@@ -161,7 +161,7 @@
   ],
   "created_at": "2026-06-04T18:50:22.852797+00:00",
   "outcome": {
-    "message": "The `after-final` SARIF report contains no actionable findings.",
+    "message": "The `after-final` compatibility export contains no actionable findings. The demo verdict is still determined by the DB proof gate.",
     "status": "success"
   },
   "proof_scan": {

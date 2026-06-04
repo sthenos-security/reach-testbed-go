@@ -43,6 +43,7 @@ def _build_payload(phase: str) -> dict[str, Any]:
         "created_at": datetime.now(timezone.utc).isoformat(),
         "provider": _provider(),
         "cache_restored": cache_restored,
+        "fresh_scan_requested": _fresh_scan_requested(),
         "cache_primary_key": os.environ.get("REACHABLE_CACHE_PRIMARY_KEY", ""),
         "cache_matched_key": os.environ.get("REACHABLE_CACHE_MATCHED_KEY", ""),
         "cache_source": os.environ.get("REACHABLE_CACHE_SOURCE", ""),
@@ -76,9 +77,17 @@ def _cache_restored() -> bool:
     return bool(os.environ.get("REACHABLE_CACHE_MATCHED_KEY"))
 
 
+def _fresh_scan_requested() -> bool:
+    return os.environ.get("REACHABLE_FRESH_SCAN", "").strip().lower() in {"1", "true", "yes"}
+
+
 def _install_mode(phase: str, cache_restored: bool, installed_version: str) -> str:
     if phase == "before-install":
+        if _fresh_scan_requested():
+            return "fresh-requested"
         return "pending"
+    if _fresh_scan_requested() and installed_version:
+        return "fresh-install"
     if installed_version and cache_restored:
         return "overlay-upgrade"
     if installed_version:
@@ -173,6 +182,7 @@ def _print_block(payload: dict[str, Any], out_path: Path) -> None:
     print("")
     print(f"Reachable cache evidence ({payload['phase']})")
     print(f"  REACHABLE_CACHE_RESTORED={str(payload['cache_restored']).lower()}")
+    print(f"  REACHABLE_FRESH_SCAN={str(payload.get('fresh_scan_requested')).lower()}")
     print(f"  REACHABLE_CACHE_PROVIDER={payload['provider']}")
     print(f"  REACHABLE_CACHE_SOURCE={payload.get('cache_source') or 'n/a'}")
     print(f"  REACHABLE_CACHE_MATCHED_KEY={payload.get('cache_matched_key') or 'none'}")

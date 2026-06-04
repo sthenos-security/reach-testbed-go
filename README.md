@@ -4,13 +4,13 @@ Intentionally vulnerable Go fixture repository for demonstrating Reachable
 CI/CD scanning, agentic remediation, and DB-backed post-fix proof.
 
 > Do not deploy this application. It contains synthetic security issues for
-> scanner validation and customer demos only.
+> scanner validation and controlled demos only.
 
 ![Reachable CI remediation flow](docs/remediation-flow.svg)
 
 ## Demo Verdict
 
-The public demo page is the customer-facing proof view for the last published
+The public demo page is the release-facing proof view for the last published
 successful proof:
 
 <https://sthenos-security.github.io/reach-testbed-go/>
@@ -19,7 +19,7 @@ That page is built from Reachable scan evidence. It shows the branch, commit,
 scan ID, and CI run it came from. The GitHub Actions workflow list remains the
 authority for the latest run status. It shows:
 
-| Evidence | What the customer should understand |
+| Evidence | What the viewer should understand |
 |----------|-------------------------------------|
 | Vulnerable baseline | The known vulnerable `main` branch was scanned and matched the expected issue contract. |
 | Remediation branch | CI created a reviewable remediation branch and applied the agent fixes there. |
@@ -28,9 +28,9 @@ authority for the latest run status. It shows:
 | Audit metadata | Branch, commit, scan number, timestamp, runtime, AI token count, and estimated AI cost are displayed for traceability. |
 | Sanitized artifacts | Convenience exports are linked for review; private prompts, rules, agent transcripts, raw witnesses, and local databases are not published. |
 
-The scan database is the source of truth for the demo verdict. SARIF is still
-generated for GitHub Code Scanning compatibility, but it is not the authority
-for the pass/fail claim.
+The scan database is the source of truth for the demo verdict. SARIF may be
+generated for platform compatibility, but it is only an export report. It is
+not the authority for the pass/fail claim.
 
 ## CI Validation Flow
 
@@ -67,7 +67,7 @@ Current golden baseline:
 |--------|----------|
 | Raw DB signals | 28 |
 | Action Required before remediation | 18 |
-| Public posture export rows | 21 |
+| Published DB demo rows | 21 |
 | Families | CVE, CWE, secret, DLP, AI |
 | Attack Prompt verdicts | 9 exploitable, 3 defended, 0 errors |
 | Actionable after remediation | 0 |
@@ -86,7 +86,7 @@ not private execution material.
 |----------|---------|
 | `summary.json` / `summary.md` | Compact DB-backed run summary for the public page. |
 | `db-remediation-verdict.json` | Machine-readable baseline/proof comparison and final verdict. |
-| `reachable.sarif` | Compatibility export for GitHub Code Scanning. |
+| `reachable.sarif` | Compatibility export for GitHub Code Scanning; not the demo verdict source. |
 | `remediation-ledger.json` | Sanitized remediation summary with rule IDs and outcomes, not prompt text. |
 | `compliance.md` / `compliance.json` | DB-backed compliance evidence extract. |
 | `compliance-narrative.md` / `compliance-narrative.json` | Evidence-cited narrative draft for review, not a legal attestation. |
@@ -107,7 +107,7 @@ The demo supports two simple CI lanes:
 
 The workflow also includes kill switches for scan-only runs, remediation
 branch verification, pull-request creation, and bounded batch size. These are
-CI controls, not customer demo steps. The public report should make the
+CI controls, not viewer-facing demo steps. The public report should make the
 selected branch, commit, scan number, and final proof state obvious without
 requiring the viewer to know the workflow inputs.
 

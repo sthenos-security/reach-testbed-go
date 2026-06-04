@@ -64,7 +64,7 @@
   <text x="462" y="234" class="tiny" fill="#69b7ff">REACHABLE</text>
   <text x="462" y="274" class="label text">Scan &amp; Rank</text>
   <text x="462" y="306" class="body muted">signals, reachability,</text>
-  <text x="462" y="332" class="body muted">SARIF, supply chain</text>
+  <text x="462" y="332" class="body muted">DB evidence, supply chain</text>
   <rect x="462" y="348" width="160" height="36" class="badge"/>
   <text x="482" y="372" class="mono" fill="#b9c8dc">repo.db proof</text>
 
@@ -89,7 +89,7 @@
   <text x="1302" y="372" class="mono" fill="#b9c8dc">bounded task</text>
 
   <path class="line2" d="M986 396 V496 H308 V386"/>
-  <text x="514" y="483" class="mono" fill="#6debdc">scan-only path: audit + publish findings, no agent writes</text>
+  <text x="560" y="465" class="mono" fill="#6debdc">scan-only: publish DB evidence, no agent writes</text>
 
   <path class="line" d="M1390 397 V471"/>
 
@@ -115,15 +115,15 @@
 
   <path class="line" d="M748 578 H650"/>
 
-  <rect x="360" y="485" width="278" height="185" class="card"/>
+  <rect x="340" y="485" width="318" height="185" class="card"/>
   <text x="392" y="529" class="tiny" fill="#39d2c0">PROOF</text>
   <text x="392" y="569" class="label text">Rescan + Proof</text>
   <text x="392" y="602" class="body muted">Reachable proof DB</text>
   <text x="392" y="628" class="body muted">and evidence pack</text>
-  <rect x="392" y="642" width="170" height="36" class="success"/>
-  <text x="413" y="666" class="mono" fill="#8ef4d4">zero actionable</text>
+  <rect x="392" y="640" width="218" height="38" class="success"/>
+  <text x="412" y="665" class="mono" fill="#8ef4d4">zero actionable</text>
 
-  <path class="line" d="M348 578 H250"/>
+  <path class="line" d="M328 578 H250"/>
 
   <rect x="70" y="485" width="168" height="185" class="card"/>
   <text x="100" y="529" class="tiny" fill="#69b7ff">OUTPUT</text>

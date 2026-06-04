@@ -1,6 +1,6 @@
 ## Reachable Go Demo - Last Verified Run
 
-- Production actionable signals in selected SARIF: `0`
+- Published DB demo rows: `0`
 - Exploitable: `0`
 - Reachable: `0`
 - Unknown: `0`
@@ -19,8 +19,8 @@
 - Proof needs review: `0`
 - Verification status: `db_verified`
 - Verification mode: `DB-backed baseline/remediation proof`
-- Verification proof scan: `repo.db expected-contract comparison`
-- Verification remaining SARIF results: `0`
+- Verification proof source: `repo.db expected-contract comparison`
+- Verification remaining DB actionable rows: `0`
 - Remediation status: `success`
 - Compliance evidence pack: `available from Pages`
 - Compliance narrative draft: `available from Pages`
@@ -34,4 +34,4 @@
 
 ### Production actionable: defended / defendable
 
-- No defended or defendable findings were included in this public SARIF.
+- No defended or defendable findings were included in the compatibility export.

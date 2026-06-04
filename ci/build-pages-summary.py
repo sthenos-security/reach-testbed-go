@@ -3,8 +3,9 @@
 
 This page is intentionally smaller than the full Reachable dashboard. It is
 safe for a public demo repo: DB-backed baseline/fix proof, selected public
-SARIF posture, remediation ledger status, and links. It does not publish raw
-prompt bundles, agent transcripts, local databases, or private logs.
+DB demo rows, remediation ledger status, compatibility exports, and links. It
+does not publish raw prompt bundles, agent transcripts, local databases, or
+private logs.
 """
 
 from __future__ import annotations
@@ -69,7 +70,7 @@ def main() -> int:
     artifacts: list[dict[str, str]] = []
     if sarif_path.exists():
         shutil.copy2(sarif_path, out_dir / "reachable.sarif")
-        artifacts.append({"label": "Selected SARIF", "href": "reachable.sarif"})
+        artifacts.append({"label": "SARIF compatibility export", "href": "reachable.sarif"})
     if ledger_path.exists():
         shutil.copy2(ledger_path, out_dir / "remediation-ledger.json")
         artifacts.append({"label": "Sanitized remediation ledger", "href": "remediation-ledger.json"})
@@ -307,6 +308,7 @@ def _run_evidence_summary(phases: dict[str, Any]) -> dict[str, Any]:
     before_size = _safe_int(before.get("reachable_home_size_kb"))
     after_size = _safe_int(latest.get("reachable_home_size_kb"))
     return {
+        "fresh_scan_requested": bool(before.get("fresh_scan_requested") or after_install.get("fresh_scan_requested") or after_scan.get("fresh_scan_requested")),
         "cache_restored": bool(before.get("cache_restored") or after_install.get("cache_restored") or after_scan.get("cache_restored")),
         "cache_source": latest.get("cache_source") or latest.get("provider") or "",
         "install_mode": after_install.get("install_mode") or latest.get("install_mode") or "",
@@ -890,7 +892,7 @@ def _verification_summary(*, ledger: dict[str, Any], findings: list[dict[str, An
             "mode": "none",
             "clean": len(findings) == 0,
             "results": len(findings),
-            "label": "selected-sarif",
+            "label": "repo.db proof unavailable",
             "message": "No remediation ledger was produced.",
         }
     outcome = ledger.get("outcome") if isinstance(ledger.get("outcome"), dict) else {}
@@ -912,7 +914,7 @@ def _verification_summary(*, ledger: dict[str, Any], findings: list[dict[str, An
         "mode": mode,
         "clean": results == 0,
         "results": results,
-        "label": str(proof_scan.get("label") or "selected-sarif"),
+        "label": str(proof_scan.get("label") or "compatibility export"),
         "message": str(outcome.get("message") or ""),
         "branch": str(ledger.get("remediation_branch") or workflow.get("ref") or ""),
         "run_url": str(workflow.get("run_url") or ""),
@@ -921,13 +923,13 @@ def _verification_summary(*, ledger: dict[str, Any], findings: list[dict[str, An
 
 def _proof_summary(*, run: dict[str, Any], findings: list[dict[str, Any]], compliance: dict[str, Any]) -> dict[str, Any]:
     proof = _sanitize_proof_evidence((run.get("properties") or {}).get("proofEvidence"))
-    source = "sarif" if proof.get("run_count") else ""
+    source = "compatibility-export" if proof.get("run_count") else ""
     if not proof.get("run_count"):
         proof = _proof_from_compliance_counts(compliance.get("proof_run_counts"))
         source = "compliance" if proof.get("run_count") else ""
     if not proof.get("run_count"):
         proof = _proof_from_findings(findings)
-        source = "sarif-results" if proof.get("run_count") else "none"
+        source = "compatibility-export-results" if proof.get("run_count") else "none"
     proof["source"] = source
     return proof
 
@@ -1030,7 +1032,7 @@ def _render_html(*, summary: dict[str, Any], generated_at: str, page_url: str, c
         priority_rows = '<tr><td colspan="8">No exploitable or reachable findings were reported.</td></tr>'
     defended_rows = "\n".join(_issue_row(item) for item in summary.get("top_defended") or [])
     if not defended_rows:
-        defended_rows = '<tr><td colspan="8">No defended or defendable findings were included in this public SARIF.</td></tr>'
+        defended_rows = '<tr><td colspan="8">No defended or defendable findings were included in the compatibility export.</td></tr>'
     rows = "\n".join(_issue_row(item) for item in summary.get("top") or [])
     if not rows:
         rows = '<tr><td colspan="8">No production actionable signals were reported.</td></tr>'
@@ -1155,7 +1157,7 @@ def _render_html(*, summary: dict[str, Any], generated_at: str, page_url: str, c
       {_card("Defended", str(defended_count))}
       {_card("Suspicious packages", str(suspicious_count))}
     </div>
-    <p class="muted">This section is the selected public posture export for code-scanning surfaces. The demo pass/fail proof above is DB-backed.</p>
+    <p class="muted">This section is a selected public DB summary for release review. Platform exports such as SARIF are linked only as compatibility reports; the demo pass/fail proof above is DB-backed.</p>
     <table>
       <thead><tr><th>Signal</th><th>Reachability</th><th>Risk</th><th>Families</th><th>Package</th><th>Fix</th><th>Location</th><th>Message</th></tr></thead>
       <tbody>{priority_rows}</tbody>
@@ -1210,6 +1212,7 @@ def _proof_panel(title: str, meta: dict[str, Any], ai: dict[str, Any]) -> str:
 
 
 def _run_evidence_panel(evidence: dict[str, Any]) -> str:
+    fresh = "yes" if evidence.get("fresh_scan_requested") else "no"
     restored = "yes" if evidence.get("cache_restored") else "no"
     reused = "yes" if evidence.get("repo_db_reused") else "no"
     hash_short = str(evidence.get("latest_repo_db_hash") or "")[:12]
@@ -1217,7 +1220,8 @@ def _run_evidence_panel(evidence: dict[str, Any]) -> str:
     return (
         '<div class="card">'
         "<h2>CI cache / install evidence</h2>"
-        f"<p><strong>Cache restored:</strong> {html.escape(restored)}<br>"
+        f"<p><strong>Fresh scan requested:</strong> {html.escape(fresh)}<br>"
+        f"<strong>Cache restored:</strong> {html.escape(restored)}<br>"
         f"<strong>Install mode:</strong> {html.escape(str(evidence.get('install_mode') or 'unknown'))}<br>"
         f"<strong>Version:</strong> target {html.escape(str(evidence.get('target_version') or 'latest'))}, installed {html.escape(str(evidence.get('installed_version') or 'unknown'))}<br>"
         f"<strong>repo.db reused:</strong> {html.escape(reused)} ({_safe_int(evidence.get('repo_db_count_before'))} before, {_safe_int(evidence.get('repo_db_count_after'))} after)<br>"
@@ -1231,6 +1235,7 @@ def _run_evidence_table(evidence: dict[str, Any]) -> str:
     if not evidence:
         return '<p class="bad">Run evidence JSON was not produced.</p>'
     rows = [
+        ("Fresh scan requested", "yes" if evidence.get("fresh_scan_requested") else "no"),
         ("Cache restored", "yes" if evidence.get("cache_restored") else "no"),
         ("Cache source", str(evidence.get("cache_source") or "")),
         ("Install mode", str(evidence.get("install_mode") or "")),
@@ -1391,7 +1396,7 @@ def _expected_business_value(item: dict[str, Any]) -> str:
     if rule_id.startswith("CWE/200"):
         return "Internal error details are no longer exposed to callers where remediation applied."
     if rule_id.startswith("SECRET/"):
-        return "Synthetic secret exposure is removed from production-actionable posture."
+        return "Synthetic secret exposure is removed from production-actionable DB evidence."
     if rule_id.startswith("DLP/"):
         return "Synthetic PII exposure is removed from logs or outbound data paths."
     if rule_id.startswith("AI/"):
@@ -1426,7 +1431,7 @@ def _render_markdown(*, summary: dict[str, Any], page_url: str, code_scanning_ur
     lines = [
         "## Reachable Go Demo - Last Scan",
         "",
-        f"- Production actionable signals in selected SARIF: `{summary.get('total', 0)}`",
+        f"- Published DB demo rows: `{summary.get('total', 0)}`",
         f"- Exploitable: `{by_reach.get('EXPLOITABLE', 0)}`",
         f"- Reachable: `{by_reach.get('REACHABLE', 0)}`",
         f"- Unknown: `{by_reach.get('UNKNOWN', 0)}`",
@@ -1445,9 +1450,10 @@ def _render_markdown(*, summary: dict[str, Any], page_url: str, code_scanning_ur
         f"- Proof needs review: `{proof.get('needs_review', 0)}`",
         f"- Verification status: `{verification.get('status', 'unknown')}`",
         f"- Verification mode: `{verification.get('mode', 'unknown')}`",
-        f"- Verification proof scan: `{verification.get('label', 'selected-sarif')}`",
-        f"- Verification remaining SARIF results: `{verification.get('results', 0)}`",
+        f"- Verification proof source: `{verification.get('label', 'repo.db expected-contract comparison')}`",
+        f"- Verification remaining DB actionable rows: `{verification.get('results', 0)}`",
         f"- Remediation status: `{remediation.get('status', 'unknown')}`",
+        f"- Fresh scan requested: `{str(bool(run_evidence_summary.get('fresh_scan_requested'))).lower()}`",
         f"- Cache restored: `{str(bool(run_evidence_summary.get('cache_restored'))).lower()}`",
         f"- Install mode: `{run_evidence_summary.get('install_mode', 'unknown')}`",
         f"- Reachable version: `{run_evidence_summary.get('installed_version') or 'unknown'}`",
@@ -1473,7 +1479,7 @@ def _render_markdown(*, summary: dict[str, Any], page_url: str, code_scanning_ur
         location = f" at `{item['location']}`" if item.get("location") else ""
         lines.append(f"- `{item['rule_id']}` {item['reachability']} risk `{item['risk']}`{location}")
     if not (summary.get("top_defended") or []):
-        lines.append("- No defended or defendable findings were included in this public SARIF.")
+        lines.append("- No defended or defendable findings were included in the compatibility export.")
     return "\n".join(lines) + "\n"
 
 

@@ -17,7 +17,7 @@ CI validates the baseline database against that contract before remediation.
 |--------------------|---------:|
 | Raw DB signals | 28 |
 | Action Required before remediation | 18 |
-| Public posture export rows | 21 |
+| Published DB demo rows | 21 |
 | Attack Prompt findings | 12 |
 | Attack Prompt exploitable | 9 |
 | Attack Prompt defended | 3 |
@@ -26,7 +26,7 @@ CI validates the baseline database against that contract before remediation.
 
 Expected signal count:
 
-| Family | DB total | Action Required | Public posture rows | Expected notes |
+| Family | DB total | Action Required | Published DB demo rows | Expected notes |
 |--------|---------:|----------------:|--------------------:|----------------|
 | CVE | 1 | 1 | 1 | Reachable vulnerable Go dependency. |
 | CWE | 12 | 9 | 12 | Command injection, SSRF/network fetch, and error disclosure patterns; three rows are defended by Attack Prompt and remain visible as notes. |
@@ -47,8 +47,8 @@ proof gate passes only when the database comparison shows:
 | Residual findings | At most filtered `NON_PROD` or `NOT_REACHABLE` fixture markers. |
 | Audit and integrity checks | Passing for the proof scan. |
 
-SARIF is exported for platform integration, but the demo verdict is based on
-the database comparison.
+SARIF may be exported for platform integration, but the demo verdict is based
+only on the database comparison.
 
 ## Expected Findings Table
 
