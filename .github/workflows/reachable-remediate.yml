@@ -356,6 +356,11 @@ jobs:
             codex)
               npm install -g @openai/codex
               codex --version
+              if [ -z "${OPENAI_API_KEY:-}" ]; then
+                echo "OPENAI_API_KEY is required for codex-openai remediation." >&2
+                exit 2
+              fi
+              printenv OPENAI_API_KEY | codex login --with-api-key
               ;;
             *)
               echo "unsupported agent: $REACHABLE_AGENT" >&2
