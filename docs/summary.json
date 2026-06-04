@@ -2,11 +2,7 @@
   "ai_economics": {
     "calls": 17,
     "cost_usd": 0.053112,
-    "engineer_baseline_usd": 1000.0,
-    "engineer_hourly_usd": 250.0,
-    "engineer_hours_avoided": 4.0,
     "estimated": true,
-    "reachable_plan_cost_usd": 99.0,
     "source": "repo.db/enzo_attacker_audit",
     "tokens_total": 30776
   },
@@ -171,7 +167,7 @@
           32
         ],
         "path": "internal/handlers/ai.go",
-        "problem_ref": "EXPECTED.md#expected-findings-table",
+        "problem_ref": "expected-results.html#expected-findings-table",
         "prod_status": "PRODUCTION",
         "remediation_action": "AI/LLM unsafe data flow is removed or covered by the underlying code fix.",
         "rule_id": "AI/LLM01-http-post-with-pii-payload-\u2014-data-leakag",
@@ -223,7 +219,7 @@
           51
         ],
         "path": "internal/handlers/ai.go",
-        "problem_ref": "EXPECTED.md#expected-findings-table",
+        "problem_ref": "expected-results.html#expected-findings-table",
         "prod_status": "PRODUCTION",
         "remediation_action": "AI/LLM unsafe data flow is removed or covered by the underlying code fix.",
         "rule_id": "AI/LLM01-http-post-with-pii-payload-\u2014-data-leakag",
@@ -275,7 +271,7 @@
           12
         ],
         "path": "internal/handlers/cwe.go",
-        "problem_ref": "EXPECTED.md#expected-findings-table",
+        "problem_ref": "expected-results.html#expected-findings-table",
         "prod_status": "PRODUCTION",
         "remediation_action": "Agent removed command-execution risk and proof scan confirms the sink is gone.",
         "rule_id": "CWE/78",
@@ -327,7 +323,7 @@
           13
         ],
         "path": "internal/handlers/suspicious.go",
-        "problem_ref": "EXPECTED.md#expected-findings-table",
+        "problem_ref": "expected-results.html#expected-findings-table",
         "prod_status": "PRODUCTION",
         "remediation_action": "Expected vulnerable fixture row is no longer present in the proof scan.",
         "rule_id": "CWE/319",
@@ -379,7 +375,7 @@
           13
         ],
         "path": "internal/handlers/dlp.go",
-        "problem_ref": "EXPECTED.md#expected-findings-table",
+        "problem_ref": "expected-results.html#expected-findings-table",
         "prod_status": "PRODUCTION",
         "remediation_action": "Synthetic PII exposure is removed from logs or outbound data paths.",
         "rule_id": "DLP/6fd2031f2cff0e06",
@@ -431,7 +427,7 @@
           15
         ],
         "path": "internal/handlers/dlp.go",
-        "problem_ref": "EXPECTED.md#expected-findings-table",
+        "problem_ref": "expected-results.html#expected-findings-table",
         "prod_status": "PRODUCTION",
         "remediation_action": "Synthetic PII exposure is removed from logs or outbound data paths.",
         "rule_id": "DLP/f22dde2c0a9e3739",
@@ -480,7 +476,7 @@
           0
         ],
         "path": "internal/handlers/cve.go",
-        "problem_ref": "EXPECTED.md#expected-findings-table",
+        "problem_ref": "expected-results.html#expected-findings-table",
         "prod_status": "PRODUCTION",
         "remediation_action": "Dependency risk removed or upgraded; build manager no longer has to chase the vulnerable library manually.",
         "rule_id": "CVE/CVE-2022-32149",
@@ -523,7 +519,7 @@
           11
         ],
         "path": "internal/handlers/cwe.go",
-        "problem_ref": "EXPECTED.md#expected-findings-table",
+        "problem_ref": "expected-results.html#expected-findings-table",
         "prod_status": "PRODUCTION",
         "remediation_action": "AI/LLM unsafe data flow is removed or covered by the underlying code fix.",
         "rule_id": "AI/LLM05-unguarded-data-flow-from-http_param-to-c",
@@ -566,7 +562,7 @@
           13
         ],
         "path": "internal/handlers/suspicious.go",
-        "problem_ref": "EXPECTED.md#expected-findings-table",
+        "problem_ref": "expected-results.html#expected-findings-table",
         "prod_status": "PRODUCTION",
         "remediation_action": "AI/LLM unsafe data flow is removed or covered by the underlying code fix.",
         "rule_id": "AI/LLM05-unguarded-data-flow-from-http_param-to-c",
@@ -609,7 +605,7 @@
           22
         ],
         "path": "internal/handlers/cwe.go",
-        "problem_ref": "EXPECTED.md#expected-findings-table",
+        "problem_ref": "expected-results.html#expected-findings-table",
         "prod_status": "PRODUCTION",
         "remediation_action": "AI/LLM unsafe data flow is removed or covered by the underlying code fix.",
         "rule_id": "AI/LLM05-unguarded-data-flow-from-http_param-to-c",
@@ -661,7 +657,7 @@
           38
         ],
         "path": "internal/handlers/cve.go",
-        "problem_ref": "EXPECTED.md#expected-findings-table",
+        "problem_ref": "expected-results.html#expected-findings-table",
         "prod_status": "PRODUCTION",
         "remediation_action": "Internal error details are no longer exposed to callers where remediation applied.",
         "rule_id": "CWE/200",
@@ -713,7 +709,7 @@
           22
         ],
         "path": "internal/handlers/cve.go",
-        "problem_ref": "EXPECTED.md#expected-findings-table",
+        "problem_ref": "expected-results.html#expected-findings-table",
         "prod_status": "PRODUCTION",
         "remediation_action": "Internal error details are no longer exposed to callers where remediation applied.",
         "rule_id": "CWE/200",
@@ -765,7 +761,7 @@
           21
         ],
         "path": "internal/handlers/ai.go",
-        "problem_ref": "EXPECTED.md#expected-findings-table",
+        "problem_ref": "expected-results.html#expected-findings-table",
         "prod_status": "PRODUCTION",
         "remediation_action": "Internal error details are no longer exposed to callers where remediation applied.",
         "rule_id": "CWE/200",
@@ -817,7 +813,7 @@
           16
         ],
         "path": "internal/handlers/cve.go",
-        "problem_ref": "EXPECTED.md#expected-findings-table",
+        "problem_ref": "expected-results.html#expected-findings-table",
         "prod_status": "PRODUCTION",
         "remediation_action": "Internal error details are no longer exposed to callers where remediation applied.",
         "rule_id": "CWE/200",
@@ -869,7 +865,7 @@
           14
         ],
         "path": "internal/handlers/suspicious.go",
-        "problem_ref": "EXPECTED.md#expected-findings-table",
+        "problem_ref": "expected-results.html#expected-findings-table",
         "prod_status": "PRODUCTION",
         "remediation_action": "Agent removed arbitrary outbound fetch behavior that could become SSRF.",
         "rule_id": "CWE/918",
@@ -921,7 +917,7 @@
           16
         ],
         "path": "internal/handlers/suspicious.go",
-        "problem_ref": "EXPECTED.md#expected-findings-table",
+        "problem_ref": "expected-results.html#expected-findings-table",
         "prod_status": "PRODUCTION",
         "remediation_action": "Internal error details are no longer exposed to callers where remediation applied.",
         "rule_id": "CWE/200",
@@ -973,7 +969,7 @@
           39
         ],
         "path": "internal/handlers/ai.go",
-        "problem_ref": "EXPECTED.md#expected-findings-table",
+        "problem_ref": "expected-results.html#expected-findings-table",
         "prod_status": "PRODUCTION",
         "remediation_action": "Internal error details are no longer exposed to callers where remediation applied.",
         "rule_id": "CWE/200",
@@ -1025,7 +1021,7 @@
           24
         ],
         "path": "internal/handlers/suspicious.go",
-        "problem_ref": "EXPECTED.md#expected-findings-table",
+        "problem_ref": "expected-results.html#expected-findings-table",
         "prod_status": "PRODUCTION",
         "remediation_action": "Internal error details are no longer exposed to callers where remediation applied.",
         "rule_id": "CWE/200",
@@ -1077,7 +1073,7 @@
           61
         ],
         "path": "internal/handlers/ai.go",
-        "problem_ref": "EXPECTED.md#expected-findings-table",
+        "problem_ref": "expected-results.html#expected-findings-table",
         "prod_status": "PRODUCTION",
         "remediation_action": "Internal error details are no longer exposed to callers where remediation applied.",
         "rule_id": "CWE/200",
@@ -1129,7 +1125,7 @@
           30
         ],
         "path": "internal/handlers/suspicious.go",
-        "problem_ref": "EXPECTED.md#expected-findings-table",
+        "problem_ref": "expected-results.html#expected-findings-table",
         "prod_status": "PRODUCTION",
         "remediation_action": "Internal error details are no longer exposed to callers where remediation applied.",
         "rule_id": "CWE/200",
@@ -1177,7 +1173,7 @@
           11
         ],
         "path": "internal/handlers/secrets.go",
-        "problem_ref": "EXPECTED.md#expected-findings-table",
+        "problem_ref": "expected-results.html#expected-findings-table",
         "prod_status": "UNKNOWN",
         "remediation_action": "Synthetic secret exposure is removed from production-actionable posture.",
         "rule_id": "SECRET/github-pat",

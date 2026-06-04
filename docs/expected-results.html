@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Reachable Go Testbed Expected Results</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <style>
     :root {
       color-scheme: dark;
@@ -220,7 +221,7 @@
     </section>
 
     <section>
-      <h2>Customer-Readable Findings</h2>
+      <h2 id="expected-findings-table">Customer-Readable Findings</h2>
       <table>
         <thead>
           <tr>
@@ -244,7 +245,7 @@
         </tbody>
       </table>
       <div class="note">
-        The full authoritative manifest is <code>../EXPECTED.md</code>. This page
+        The full authoritative manifest is <code>EXPECTED.md</code>. This page
         is the executive/demo view for non-security stakeholders. The exact
         scanner contract is stored in <code>expected/baseline.json</code>; CI
         checks the scan database against that contract before and after

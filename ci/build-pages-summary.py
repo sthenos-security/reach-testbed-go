@@ -77,6 +77,14 @@ def main() -> int:
     if db_verdict_path.exists():
         shutil.copy2(db_verdict_path, out_dir / "db-remediation-verdict.json")
         artifacts.append({"label": "DB remediation verdict", "href": "db-remediation-verdict.json"})
+    docs_dir = Path(__file__).resolve().parents[1] / "docs"
+    favicon_path = docs_dir / "favicon.svg"
+    if favicon_path.exists():
+        shutil.copy2(favicon_path, out_dir / "favicon.svg")
+    expected_html_path = docs_dir / "expected-results.html"
+    if expected_html_path.exists():
+        shutil.copy2(expected_html_path, out_dir / "expected-results.html")
+        artifacts.append({"label": "Expected issue contract", "href": "expected-results.html"})
     run_evidence = _copy_cache_evidence(ledger_path.parent, out_dir)
     for item in run_evidence.get("artifacts", []):
         if isinstance(item, dict):
@@ -84,7 +92,6 @@ def main() -> int:
     expected_doc_path = Path(__file__).resolve().parents[1] / "EXPECTED.md"
     if expected_doc_path.exists():
         shutil.copy2(expected_doc_path, out_dir / "EXPECTED.md")
-        artifacts.append({"label": "Expected issue contract", "href": "EXPECTED.md"})
     compliance = _copy_latest_compliance_pack(out_dir)
 
     summary = _summarize(sarif=sarif, ledger=ledger, compliance=compliance)
@@ -330,7 +337,7 @@ def _expected_row(item: tuple[Any, ...]) -> dict[str, Any]:
         "line": int(line or 0),
         "location": location,
         "kind": _plain_kind(str(rule or "")),
-        "problem_ref": "EXPECTED.md#expected-findings-table",
+        "problem_ref": "expected-results.html#expected-findings-table",
     }
 
 
@@ -1048,7 +1055,8 @@ def _render_html(*, summary: dict[str, Any], generated_at: str, page_url: str, c
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Reachable Go Demo - Last Scan</title>
+  <title>Reachable Go Demo - Last Verified Run</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <style>
     :root {{ color-scheme: light dark; --bg:#0e151c; --fg:#f7fafc; --muted:#98a7b5; --line:#253342; --card:#141f29; --accent:#5fe0a3; --warn:#ffd166; --bad:#ff7b7b; }}
     body {{ margin:0; font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background:var(--bg); color:var(--fg); }}
@@ -1063,6 +1071,8 @@ def _render_html(*, summary: dict[str, Any], generated_at: str, page_url: str, c
     .hero.ok {{ border-color:rgba(95,224,163,.55); }}
     .hero.bad {{ border-color:rgba(255,123,123,.65); }}
     .hero h1 {{ font-size:34px; }}
+    .verdict {{ border:1px solid rgba(95,224,163,.45); border-radius:8px; background:#0d201a; padding:12px 14px; margin:14px 0; color:#dff8ec; }}
+    .verdict strong {{ color:var(--accent); }}
     .subgrid {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(270px,1fr)); gap:12px; margin-top:16px; }}
     .status {{ font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); }}
     .status.ok {{ color:var(--accent); }}
@@ -1096,9 +1106,10 @@ def _render_html(*, summary: dict[str, Any], generated_at: str, page_url: str, c
 <body>
   <main>
     <section class="hero {expected_class}">
-      <div class="status {expected_class}">Reachable self-remediation demo · {html.escape(expected_status)}</div>
+      <div class="status {expected_class}">Reachable autonomous remediation demo · {html.escape(expected_status)}</div>
       <h1>{html.escape(hero_title)}</h1>
-      <p><strong>{html.escape(hero_headline)}</strong> Public, sanitized proof for the intentionally vulnerable Reachable Go testbed. The page is built from the Reachable scan database: vulnerable baseline scan, remediation proof scan, expected issue contract, branch, commit, scan number, timestamp, and AI cost telemetry. Private prompts, rules, agent transcripts, and local databases are not published.</p>
+      <div class="verdict"><strong>Verdict:</strong> {html.escape(hero_headline)}</div>
+      <p>Public, sanitized proof for the intentionally vulnerable Reachable Go testbed. The page is built from the Reachable scan database: vulnerable baseline scan, remediation proof scan, expected issue contract, branch, commit, scan number, timestamp, and AI cost telemetry. Private prompts, rules, agent transcripts, and local databases are not published.</p>
       <div class="cards">
         {_card("Expected issues", str(expected_demo.get("expected_total", 0)))}
         {_card("Found on vulnerable main", str(expected_demo.get("baseline_found", 0)))}
@@ -1107,8 +1118,6 @@ def _render_html(*, summary: dict[str, Any], generated_at: str, page_url: str, c
         {_card("Final actionable findings", str(expected_demo.get("after_total") if expected_demo.get("after_total") is not None else "not run"))}
         {_card("AI cost estimate", _money(ai_economics.get("cost_usd")))}
         {_card("AI tokens", _number(ai_economics.get("tokens_total")))}
-        {_card("Engineer baseline", _money(ai_economics.get("engineer_baseline_usd")))}
-        {_card("Reachable plan", _money(ai_economics.get("reachable_plan_cost_usd")))}
       </div>
       <div class="subgrid">
         {_proof_panel("Vulnerable baseline", baseline_meta, baseline_ai)}
@@ -1248,27 +1257,13 @@ def _demo_ai_economics(expected_demo: dict[str, Any]) -> dict[str, Any]:
     cost = float(baseline_ai.get("cost_usd") or 0.0) + float(after_ai.get("cost_usd") or 0.0)
     tokens = int(baseline_ai.get("tokens_total") or 0) + int(after_ai.get("tokens_total") or 0)
     calls = int(baseline_ai.get("calls") or 0) + int(after_ai.get("calls") or 0)
-    engineer_rate = _env_float("REACHABLE_ENGINEER_HOURLY_USD", 250.0)
-    engineer_hours = _env_float("REACHABLE_ENGINEER_HOURS_AVOIDED", 4.0)
-    plan_cost = _env_float("REACHABLE_PLAN_COST_USD", 99.0)
     return {
         "source": "repo.db/enzo_attacker_audit",
         "estimated": True,
         "calls": calls,
         "tokens_total": tokens,
         "cost_usd": cost,
-        "engineer_hourly_usd": engineer_rate,
-        "engineer_hours_avoided": engineer_hours,
-        "engineer_baseline_usd": engineer_rate * engineer_hours,
-        "reachable_plan_cost_usd": plan_cost,
     }
-
-
-def _env_float(name: str, default: float) -> float:
-    try:
-        return float(os.environ.get(name, default))
-    except (TypeError, ValueError):
-        return default
 
 
 def _scan_label(meta: dict[str, Any]) -> str:
@@ -1366,7 +1361,7 @@ def _expected_demo_row(item: dict[str, Any]) -> str:
     title = str(item.get("signal_title") or item.get("kind") or "Security finding")
     details = str(item.get("signal_description") or "")
     remediation_action = str(item.get("remediation_action") or _expected_business_value(item))
-    problem_ref = str(item.get("problem_ref") or "EXPECTED.md#expected-findings-table")
+    problem_ref = str(item.get("problem_ref") or "expected-results.html#expected-findings-table")
     detail_html = ""
     if details:
         detail_html = f"<details><summary>Details</summary><p>{html.escape(details)}</p></details>"
@@ -1460,7 +1455,7 @@ def _render_markdown(*, summary: dict[str, Any], page_url: str, code_scanning_ur
         f"- Cached scan sessions: `{run_evidence_summary.get('scan_session_count', 0)}`",
         f"- Compliance evidence pack: `{('available from Pages' if compliance.get('available') else 'not available')}`",
         f"- Compliance narrative draft: `{('available from Pages' if compliance.get('narrative_markdown') else 'not available')}`",
-        f"- Pages summary: {page_url or 'available after Pages deployment'}",
+        f"- Published results page: {page_url or 'available after results are published to Pages'}",
         f"- Security dashboard: {code_scanning_url}",
         f"- CI run: {run_url}",
         "",

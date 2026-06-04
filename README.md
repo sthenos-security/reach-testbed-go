@@ -10,11 +10,14 @@ CI/CD scanning, agentic remediation, and DB-backed post-fix proof.
 
 ## Demo Verdict
 
-The public demo page is the customer-facing proof view:
+The public demo page is the customer-facing proof view for the last published
+successful proof:
 
 <https://sthenos-security.github.io/reach-testbed-go/>
 
-That page is built from Reachable scan evidence. It shows:
+That page is built from Reachable scan evidence. It shows the branch, commit,
+scan ID, and CI run it came from. The GitHub Actions workflow list remains the
+authority for the latest run status. It shows:
 
 | Evidence | What the customer should understand |
 |----------|-------------------------------------|

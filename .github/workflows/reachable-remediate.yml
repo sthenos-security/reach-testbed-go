@@ -773,20 +773,20 @@ jobs:
           path: ~/.reachable
           key: ${{ steps.reachable-cache.outputs.cache-primary-key }}
 
-      - name: Configure GitHub Pages
+      - name: Configure results publishing to GitHub Pages
         if: always() && github.event_name != 'pull_request' && inputs.remediate && !inputs.rescan_only
         continue-on-error: true
         uses: actions/configure-pages@v5
 
-      - name: Upload GitHub Pages artifact
+      - name: Upload results page artifact
         if: always() && github.event_name != 'pull_request' && inputs.remediate && !inputs.rescan_only
         continue-on-error: true
         uses: actions/upload-pages-artifact@v3
         with:
           path: .reachable/ci-artifacts/pages
 
-      - name: Deploy GitHub Pages
-        id: deployment
+      - name: Publish results to GitHub Pages
+        id: publish-results
         if: always() && github.event_name != 'pull_request' && inputs.remediate && !inputs.rescan_only
         continue-on-error: true
         uses: actions/deploy-pages@v4
