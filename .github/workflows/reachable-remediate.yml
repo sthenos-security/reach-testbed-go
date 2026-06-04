@@ -116,6 +116,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.target_branch }}
+          token: ${{ secrets.REACHABLE_GITHUB_TOKEN || github.token }}
 
       - uses: actions/setup-go@v5
         if: ${{ hashFiles('go.mod') != '' }}
