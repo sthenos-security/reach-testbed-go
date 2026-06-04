@@ -20,6 +20,11 @@ permissions:
   contents: write
   pull-requests: read
 
+env:
+  # Opt into GitHub's Node 24 JavaScript action runtime now so cleanup runs use
+  # the same customer-facing runtime posture as the remediation demo.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   cleanup:
     runs-on: ubuntu-latest

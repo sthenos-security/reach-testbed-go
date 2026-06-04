@@ -90,9 +90,6 @@ def main() -> int:
     for item in run_evidence.get("artifacts", []):
         if isinstance(item, dict):
             artifacts.append(item)
-    expected_doc_path = Path(__file__).resolve().parents[1] / "EXPECTED.md"
-    if expected_doc_path.exists():
-        shutil.copy2(expected_doc_path, out_dir / "EXPECTED.md")
     compliance = _copy_latest_compliance_pack(out_dir)
 
     summary = _summarize(sarif=sarif, ledger=ledger, compliance=compliance)
@@ -105,7 +102,6 @@ def main() -> int:
     summary["artifacts"].extend(
         [
             {"label": "Summary JSON", "href": "summary.json"},
-            {"label": "Summary Markdown", "href": "summary.md"},
         ]
     )
     page_url = _pages_url()
@@ -124,7 +120,6 @@ def main() -> int:
     )
     (out_dir / "summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     markdown = _render_markdown(summary=summary, page_url=page_url, code_scanning_url=code_scanning_url, run_url=run_url)
-    (out_dir / "summary.md").write_text(markdown, encoding="utf-8")
 
     step_summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if step_summary:
@@ -272,7 +267,7 @@ def _expected_demo_summary(*, artifact_dir: Path) -> dict[str, Any]:
         "clean": clean,
         "headline": headline,
         "rows": rows,
-        "contract_path": "EXPECTED.md",
+        "contract_path": "expected-results.html",
         "baseline": baseline_ctx["meta"],
         "after": after_ctx["meta"],
         "baseline_ai": baseline_ai,
@@ -681,9 +676,6 @@ def _copy_latest_compliance_pack(out_dir: Path) -> dict[str, Any]:
         if not any(path.exists() for path in (md_path, json_path, narrative_md_path, narrative_json_path)):
             continue
         copied: dict[str, Any] = {"available": True, "label": label}
-        if md_path.exists():
-            shutil.copy2(md_path, out_dir / "compliance.md")
-            copied["markdown"] = "compliance.md"
         if json_path.exists():
             shutil.copy2(json_path, out_dir / "compliance.json")
             copied["json"] = "compliance.json"
@@ -691,9 +683,6 @@ def _copy_latest_compliance_pack(out_dir: Path) -> dict[str, Any]:
             proof_counts = (compliance_json.get("summary") or {}).get("proof_run_counts")
             if isinstance(proof_counts, dict):
                 copied["proof_run_counts"] = proof_counts
-        if narrative_md_path.exists():
-            shutil.copy2(narrative_md_path, out_dir / "compliance-narrative.md")
-            copied["narrative_markdown"] = "compliance-narrative.md"
         if narrative_json_path.exists():
             shutil.copy2(narrative_json_path, out_dir / "compliance-narrative.json")
             copied["narrative_json"] = "compliance-narrative.json"
@@ -1052,7 +1041,7 @@ def _render_html(*, summary: dict[str, Any], generated_at: str, page_url: str, c
         defended_rows = '<tr><td colspan="8">No defended or defendable findings were included in the compatibility export.</td></tr>'
     rows = "\n".join(_issue_row(item) for item in summary.get("top") or [])
     if not rows:
-        rows = '<tr><td colspan="8">No production actionable signals were reported.</td></tr>'
+        rows = '<tr><td colspan="8">No release-blocking signals were reported.</td></tr>'
     rule_rows = "\n".join(_rule_row(item) for item in remediation.get("selected_rules") or [])
     if not rule_rows:
         rule_rows = '<tr><td colspan="4">No remediation rules were selected in this run.</td></tr>'
@@ -1113,6 +1102,7 @@ def _render_html(*, summary: dict[str, Any], generated_at: str, page_url: str, c
     .reachable {{ color:var(--accent); }}
     .warning {{ color:var(--warn); }}
     .bad {{ color:var(--bad); }}
+    footer {{ margin-top:32px; padding-top:18px; border-top:1px solid var(--line); color:var(--muted); font-size:12px; }}
     details p {{ margin:8px 0 0; }}
     code {{ word-break:break-word; }}
     @media (max-width: 640px) {{
@@ -1199,6 +1189,7 @@ def _render_html(*, summary: dict[str, Any], generated_at: str, page_url: str, c
     <p class="muted">These are convenience exports. The public page does not publish the private remediation bundle, prompt text, generated rules, agent transcript, raw witnesses, or local databases.</p>
     <div class="artifact-list">{artifact_links}</div>
     <p class="muted">Generated at {html.escape(generated_at)} for {html.escape(str(summary.get("repo") or ""))} / {html.escape(str(summary.get("ref") or ""))} / commit {html.escape(str(summary.get("sha") or ""))}. Page URL: {html.escape(page_url)}</p>
+    <footer>Copyright © 2026 Sthenos Security, Inc. All rights reserved.</footer>
   </main>
 </body>
 </html>
@@ -1323,12 +1314,8 @@ def _compliance_links(compliance: dict[str, Any]) -> str:
     if not compliance.get("available"):
         return ""
     links = []
-    if compliance.get("markdown"):
-        links.append('<a href="compliance.md">Download compliance pack</a>')
     if compliance.get("json"):
         links.append('<a href="compliance.json">Download compliance JSON</a>')
-    if compliance.get("narrative_markdown"):
-        links.append('<a href="compliance-narrative.md">Download auditor narrative</a>')
     if compliance.get("narrative_json"):
         links.append('<a href="compliance-narrative.json">Download narrative JSON</a>')
     return "\n      ".join(links)
@@ -1339,9 +1326,7 @@ def _artifact_links(artifacts: list[dict[str, str]], compliance: dict[str, Any])
         ("Code scanning alerts", _code_scanning_url(), True),
         ("CI run", _run_url(), True),
         *[(item.get("label", ""), item.get("href", ""), True) for item in artifacts if isinstance(item, dict)],
-        ("Compliance pack", "compliance.md", bool(compliance.get("markdown"))),
         ("Compliance JSON", "compliance.json", bool(compliance.get("json"))),
-        ("Auditor narrative", "compliance-narrative.md", bool(compliance.get("narrative_markdown"))),
         ("Auditor narrative JSON", "compliance-narrative.json", bool(compliance.get("narrative_json"))),
     ]
     links = [
@@ -1413,7 +1398,7 @@ def _expected_business_value(item: dict[str, Any]) -> str:
     if rule_id.startswith("CWE/200"):
         return "Internal error details are no longer exposed to callers where remediation applied."
     if rule_id.startswith("SECRET/"):
-        return "Synthetic secret exposure is removed from production-actionable DB evidence."
+        return "Synthetic secret exposure is removed from release-blocking DB evidence."
     if rule_id.startswith("DLP/"):
         return "Synthetic PII exposure is removed from logs or outbound data paths."
     if rule_id.startswith("AI/"):
@@ -1448,7 +1433,7 @@ def _render_markdown(*, summary: dict[str, Any], page_url: str, code_scanning_ur
     lines = [
         "## Reachable Go Demo - Last Scan",
         "",
-        f"- Published DB demo rows: `{summary.get('total', 0)}`",
+        f"- DB evidence rows used in public proof: `{summary.get('total', 0)}`",
         f"- Exploitable: `{by_reach.get('EXPLOITABLE', 0)}`",
         f"- Reachable: `{by_reach.get('REACHABLE', 0)}`",
         f"- Unknown: `{by_reach.get('UNKNOWN', 0)}`",
@@ -1477,7 +1462,7 @@ def _render_markdown(*, summary: dict[str, Any], page_url: str, code_scanning_ur
         f"- repo.db reuse: `{str(bool(run_evidence_summary.get('repo_db_reused'))).lower()}` (`{run_evidence_summary.get('repo_db_count_before', 0)}` before, `{run_evidence_summary.get('repo_db_count_after', 0)}` after)",
         f"- Cached scan sessions: `{run_evidence_summary.get('scan_session_count', 0)}`",
         f"- Compliance evidence pack: `{('available from Pages' if compliance.get('available') else 'not available')}`",
-        f"- Compliance narrative draft: `{('available from Pages' if compliance.get('narrative_markdown') else 'not available')}`",
+        f"- Compliance narrative JSON: `{('available from Pages' if compliance.get('narrative_json') else 'not available')}`",
         f"- Published results page: {page_url or 'available after results are published to Pages'}",
         f"- Security dashboard: {code_scanning_url}",
         f"- CI run: {run_url}",

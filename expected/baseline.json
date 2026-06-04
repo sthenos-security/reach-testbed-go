@@ -6,8 +6,8 @@
   "notes": [
     "All secrets and PII are synthetic.",
     "DB signals are scanner truth, including filtered rows.",
-    "SARIF posture rows are public CI/demo truth and include defended rows.",
-    "EXPLOITABLE rows must come from Attack Prompt / Enzo attacker evidence."
+    "SARIF rows are a compatibility export derived from DB-selected production evidence.",
+    "EXPLOITABLE rows must come from Enzo attacker evidence."
   ],
   "db": {
     "total_signals": 28,

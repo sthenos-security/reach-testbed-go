@@ -20,16 +20,12 @@
       "label": "DB remediation verdict"
     },
     {
-      "href": "EXPECTED.md",
+      "href": "expected-results.html",
       "label": "Expected issue contract"
     },
     {
       "href": "summary.json",
       "label": "Summary JSON"
-    },
-    {
-      "href": "summary.md",
-      "label": "Summary Markdown"
     }
   ],
   "by_family": {},
@@ -40,9 +36,7 @@
     "available": true,
     "json": "compliance.json",
     "label": "after-final",
-    "markdown": "compliance.md",
     "narrative_json": "compliance-narrative.json",
-    "narrative_markdown": "compliance-narrative.md",
     "proof_run_counts": {
       "by_phase": {},
       "by_profile_kind": {},
@@ -117,7 +111,7 @@
     "baseline_found": 21,
     "baseline_missing": 0,
     "clean": true,
-    "contract_path": "EXPECTED.md",
+    "contract_path": "expected-results.html",
     "evidence_source": "repo.db",
     "expected_total": 21,
     "fixed": 21,
@@ -1175,7 +1169,7 @@
         "path": "internal/handlers/secrets.go",
         "problem_ref": "expected-results.html#expected-findings-table",
         "prod_status": "UNKNOWN",
-        "remediation_action": "Synthetic secret exposure is removed from production-actionable DB evidence.",
+        "remediation_action": "Synthetic secret exposure is removed from release-blocking DB evidence.",
         "rule_id": "SECRET/github-pat",
         "signal_description": "Token detected. Use a secrets manager (Vault, AWS Secrets Manager) for storage. Prefer short-lived tokens with automatic refresh. Implement proper token scoping and rotation.",
         "signal_title": "Token detected. Use a secrets manager (Vault, AWS Secrets Manager) for storage. Prefer short-lived tokens with automatic refresh. Implement proper token scoping and rotation.",

@@ -48,7 +48,7 @@
           "go",
           "python"
         ],
-        "reachabilityNote": "This report contains production actionable EXPLOITABLE, REACHABLE, UNKNOWN, and DEFENDED/DEFENDABLE findings. NON_PROD and NOT_REACHABLE findings are omitted."
+        "reachabilityNote": "This report contains release-blocking EXPLOITABLE, REACHABLE, UNKNOWN, and DEFENDED/DEFENDABLE compatibility rows. NON_PROD and NOT_REACHABLE findings are omitted."
       },
       "versionControlProvenance": [
         {

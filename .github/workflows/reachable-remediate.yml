@@ -80,6 +80,11 @@ permissions:
   pages: write
   id-token: write
 
+env:
+  # Opt into GitHub's Node 24 JavaScript action runtime now so the demo does
+  # not emit platform deprecation annotations during customer-facing runs.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   reachable-remediate:
     runs-on: ubuntu-latest
@@ -358,26 +363,15 @@ jobs:
       - name: Gate rescan-only verification
         if: ${{ inputs.rescan_only }}
         run: |
-          python3 - <<'PY'
-          import json
-          import sys
-          from pathlib import Path
-
-          sarif_path = Path(".reachable/ci-artifacts/reachable.sarif")
-          if not sarif_path.exists():
-              print("Reachable rescan-only verification failed: baseline SARIF was not produced.", file=sys.stderr)
-              sys.exit(3)
-
-          sarif = json.loads(sarif_path.read_text(encoding="utf-8"))
-          results = sum(len(run.get("results") or []) for run in sarif.get("runs") or [])
-          print(f"Reachable rescan-only compatibility export results: {results}")
-          if results:
-              print(
-                  "Reachable rescan-only verification failed: the selected branch still has production actionable findings.",
-                  file=sys.stderr,
-              )
-              sys.exit(3)
-          PY
+          latest_scan_path="$(python -c "from pathlib import Path; root=Path.home()/'.reachable'/'scans'; candidates=[p for p in root.glob('*/*/20*') if p.is_dir()]; print(max(candidates, key=lambda p: p.stat().st_mtime) if candidates else '')")"
+          if [ -z "$latest_scan_path" ]; then
+            echo "Reachable rescan-only verification failed: no Reachable scan session found under ~/.reachable/scans." >&2
+            exit 2
+          fi
+          echo "Reachable rescan-only DB verification target: $latest_scan_path"
+          python3 ci/check-db-release-blockers.py \
+            "$latest_scan_path" \
+            .reachable/ci-artifacts/db-rescan-only-verdict.json
 
       - name: Create remediation branch
         if: ${{ inputs.remediate && !inputs.rescan_only }}
@@ -723,7 +717,7 @@ jobs:
           lines = [
               "## Reachable GitHub Dashboard",
               "",
-              "Reachable publishes production actionable findings to GitHub Code Scanning with SARIF category `reachable`.",
+              "Reachable publishes release-blocking compatibility rows to GitHub Code Scanning with SARIF category `reachable`.",
               "",
           ]
 

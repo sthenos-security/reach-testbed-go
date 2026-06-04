@@ -42,6 +42,7 @@
     .reachable { color:var(--accent); }
     .warning { color:var(--warn); }
     .bad { color:var(--bad); }
+    footer { margin-top:32px; padding-top:18px; border-top:1px solid var(--line); color:var(--muted); font-size:12px; }
     details p { margin:8px 0 0; }
     code { word-break:break-word; }
   </style>
@@ -121,7 +122,7 @@
 <tr><td><code>CWE/200</code><br><span class="muted">Internal error details written to HTTP response — exposes server internals (table names, paths, stack traces) to clients. Return a generic error message and log the detail server-side.
 </span><br><a href="expected-results.html#expected-findings-table">Problem contract</a></td><td>MEDIUM</td><td>REACHABLE</td><td>DEFENDED</td><td><code>internal/handlers/suspicious.go:30</code></td><td>Found</td><td>Not reported</td><td><span class="pill reachable">Fixed - no longer reported</span></td><td>Internal error details are no longer exposed to callers where remediation applied.<details><summary>Details</summary><p>Internal error details written to HTTP response — exposes server internals (table names, paths, stack traces) to clients. Return a generic error message and log the detail server-side.
 </p></details></td></tr>
-<tr><td><code>SECRET/github-pat</code><br><span class="muted">Token detected. Use a secrets manager (Vault, AWS Secrets Manager) for storage. Prefer short-lived tokens with automatic refresh. Implement proper token scoping and rotation.</span><br><a href="expected-results.html#expected-findings-table">Problem contract</a></td><td>INFO</td><td>NOT_REACHABLE</td><td>NOT ATTACKED</td><td><code>internal/handlers/secrets.go:11</code></td><td>Found</td><td>Not reported</td><td><span class="pill reachable">Fixed - no longer reported</span></td><td>Synthetic secret exposure is removed from production-actionable DB evidence.<details><summary>Details</summary><p>Token detected. Use a secrets manager (Vault, AWS Secrets Manager) for storage. Prefer short-lived tokens with automatic refresh. Implement proper token scoping and rotation.</p></details></td></tr></tbody>
+<tr><td><code>SECRET/github-pat</code><br><span class="muted">Token detected. Use a secrets manager (Vault, AWS Secrets Manager) for storage. Prefer short-lived tokens with automatic refresh. Implement proper token scoping and rotation.</span><br><a href="expected-results.html#expected-findings-table">Problem contract</a></td><td>INFO</td><td>NOT_REACHABLE</td><td>NOT ATTACKED</td><td><code>internal/handlers/secrets.go:11</code></td><td>Found</td><td>Not reported</td><td><span class="pill reachable">Fixed - no longer reported</span></td><td>Synthetic secret exposure is removed from release-blocking DB evidence.<details><summary>Details</summary><p>Token detected. Use a secrets manager (Vault, AWS Secrets Manager) for storage. Prefer short-lived tokens with automatic refresh. Implement proper token scoping and rotation.</p></details></td></tr></tbody>
       </table>
     </section>
     <h2 id="findings">Remaining Production Actionable Findings</h2>
@@ -146,7 +147,7 @@
     <h2>All Production Actionable Signals</h2>
     <table>
       <thead><tr><th>Signal</th><th>Reachability</th><th>Risk</th><th>Families</th><th>Package</th><th>Fix</th><th>Location</th><th>Message</th></tr></thead>
-      <tbody><tr><td colspan="8">No production actionable signals were reported.</td></tr></tbody>
+      <tbody><tr><td colspan="8">No release-blocking signals were reported.</td></tr></tbody>
     </table>
     <h2 id="remediation">Remediation Attempt</h2>
     <p>Status: <strong>success</strong>. DB-backed verdict: All expected demo vulnerabilities were found and the remediation branch has no blocking findings.</p>
@@ -174,12 +175,10 @@
       <a href="db-remediation-verdict.json">DB remediation verdict</a>
       <a href="expected-results.html">Expected issue contract</a>
       <a href="summary.json">Summary JSON</a>
-      <a href="summary.md">Summary Markdown</a>
-      <a href="compliance.md">Compliance pack</a>
       <a href="compliance.json">Compliance JSON</a>
-      <a href="compliance-narrative.md">Auditor narrative</a>
       <a href="compliance-narrative.json">Auditor narrative JSON</a></div>
     <p class="muted">Generated at 2026-06-04T18:50:24.960843+00:00 for sthenos-security/reach-testbed-go / main / commit 8abd78310ce1a9f20fa6468725b802d297175743. Page URL: https://sthenos-security.github.io/reach-testbed-go/</p>
+    <footer>Copyright © 2026 Sthenos Security, Inc. All rights reserved.</footer>
   </main>
 </body>
 </html>

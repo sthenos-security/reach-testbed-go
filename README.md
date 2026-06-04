@@ -35,7 +35,7 @@ authority for the latest run status. It shows:
 | Vulnerable baseline | The known vulnerable `main` branch was scanned and matched the expected issue contract. |
 | Remediation branch | CI created a reviewable remediation branch and applied the agent fixes there. |
 | Proof scan | Reachable rescanned the remediated branch and compared the result to the expected contract. |
-| Final verdict | The demo passes only when the proof database has zero production-actionable findings. |
+| Final verdict | The demo passes only when the proof database has zero release blockers. |
 | Audit metadata | Branch, commit, scan number, timestamp, runtime, AI token count, and estimated AI cost are displayed for traceability. |
 | Sanitized artifacts | Convenience exports are linked for review; private prompts, rules, agent transcripts, raw witnesses, and local databases are not published. |
 
@@ -58,7 +58,8 @@ is the implementation. At a high level, each demo run follows this sequence:
 6. The project test command runs to catch ordinary build or behavior breaks.
 7. Reachable rescans the remediation branch into a new proof database.
 8. The proof database is compared with the expected contract. The pass
-   condition is zero remaining production-actionable findings.
+   condition is zero remaining release blockers. Rescan-only verification uses
+   the same database release-blocker gate; SARIF is never the pass/fail source.
 9. CI publishes a sanitized Pages report and support artifacts with the exact
    scan IDs, branch names, commits, timestamps, runtime, cache state, and AI
    cost telemetry.
@@ -77,11 +78,11 @@ Current golden baseline:
 | Result | Expected |
 |--------|----------|
 | Raw DB signals | 28 |
-| Action Required before remediation | 18 |
-| Published DB demo rows | 21 |
+| Release blockers before remediation | 18 |
+| DB evidence rows used in public proof | 21 |
 | Families | CVE, CWE, secret, DLP, AI |
-| Grouped expected findings | 17 grouped findings covering 21 published DB demo rows. |
-| Actionable after remediation | 0 |
+| Grouped expected findings | 17 grouped findings covering 28 raw DB signals. |
+| Release blockers after remediation | 0 |
 | Residual post-fix findings | Only filtered `NON_PROD` or `NOT_REACHABLE` fixture markers may remain in the database. |
 
 The testbed itself is the contract. Do not edit the vulnerable fixture or the
@@ -95,13 +96,13 @@ not private execution material.
 
 | Artifact | Purpose |
 |----------|---------|
-| [summary.json](https://sthenos-security.github.io/reach-testbed-go/summary.json) / [summary.md](https://sthenos-security.github.io/reach-testbed-go/summary.md) | Compact DB-backed run summary for the public page. |
+| [summary.json](https://sthenos-security.github.io/reach-testbed-go/summary.json) | Compact DB-backed run summary for the public page. |
 | [db-remediation-verdict.json](https://sthenos-security.github.io/reach-testbed-go/db-remediation-verdict.json) | Machine-readable baseline/proof comparison and final verdict. |
 | [reachable.sarif](https://sthenos-security.github.io/reach-testbed-go/reachable.sarif) | Compatibility export for GitHub Code Scanning; not the demo verdict source. |
 | [remediation-ledger.json](https://sthenos-security.github.io/reach-testbed-go/remediation-ledger.json) | Sanitized remediation summary with rule IDs and outcomes, not prompt text. |
-| [compliance.md](https://sthenos-security.github.io/reach-testbed-go/compliance.md) / [compliance.json](https://sthenos-security.github.io/reach-testbed-go/compliance.json) | DB-backed compliance evidence extract. |
-| [compliance-narrative.md](https://sthenos-security.github.io/reach-testbed-go/compliance-narrative.md) / [compliance-narrative.json](https://sthenos-security.github.io/reach-testbed-go/compliance-narrative.json) | Evidence-cited narrative draft for review, not a legal attestation. |
-| [EXPECTED.md](https://sthenos-security.github.io/reach-testbed-go/EXPECTED.md) | Human-readable expected issue contract. |
+| [compliance.json](https://sthenos-security.github.io/reach-testbed-go/compliance.json) | DB-backed compliance evidence extract. |
+| [compliance-narrative.json](https://sthenos-security.github.io/reach-testbed-go/compliance-narrative.json) | Evidence-cited narrative draft for review, not a legal attestation. |
+| [expected-results.html](https://sthenos-security.github.io/reach-testbed-go/expected-results.html) | Branded expected issue contract and baseline proof criteria. |
 
 The workflow must not publish raw remediation bundles, prompt text, generated
 rule packs, skills databases, fuzz or pentest prompts, agent transcripts, raw
@@ -163,7 +164,7 @@ For this demo, “fixed” means:
 1. The vulnerable baseline database contained the expected issue.
 2. The remediation branch proof database no longer contains that production
    actionable issue.
-3. The proof gate reports zero remaining production-actionable findings.
+3. The proof gate reports zero remaining release blockers.
 4. The public report displays the branch, commit, scan ID, timestamp, and
    artifact links that produced the verdict.
 

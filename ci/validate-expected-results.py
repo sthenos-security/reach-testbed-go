@@ -211,7 +211,7 @@ def validate(args: argparse.Namespace) -> int:
     print("Reachable Go expected-results validation passed")
     print(f"  DB signals: {len(rows)}")
     print(f"  SARIF compatibility export rows: {len(results)}")
-    print(f"  Attack Prompt: {db_expected['attacker']['exploitable']} exploitable, {db_expected['attacker']['defended']} defended")
+    print(f"  Enzo attacker: {db_expected['attacker']['exploitable']} exploitable, {db_expected['attacker']['defended']} defended")
     return 0
 
 
