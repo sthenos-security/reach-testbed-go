@@ -645,11 +645,17 @@ jobs:
       - name: Open remediation PR
         if: ${{ inputs.remediate && !inputs.rescan_only && inputs.create_pr }}
         run: |
-          pr_token="${GH_TOKEN:-}"
+          pr_token="${REACHABLE_GITHUB_TOKEN:-${GH_TOKEN:-}}"
           if [ -z "$pr_token" ]; then
             echo "No GitHub token available for PR creation."
             echo "Remediation branch pushed: https://github.com/${GITHUB_REPOSITORY}/tree/${REACHABLE_REMEDIATION_BRANCH}"
             exit 0
+          fi
+
+          if [ -n "${REACHABLE_GITHUB_TOKEN:-}" ]; then
+            echo "Opening remediation PR with REACHABLE_GITHUB_TOKEN."
+          else
+            echo "Opening remediation PR with workflow GITHUB_TOKEN."
           fi
 
           set +e
