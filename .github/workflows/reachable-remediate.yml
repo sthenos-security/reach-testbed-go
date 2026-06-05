@@ -116,7 +116,7 @@ jobs:
       # Keep this short so a stuck coding-agent CLI cannot hold the customer
       # demo past the expected workflow window. Repositories can override with
       # the REACHABLE_AGENT_TIMEOUT_SECONDS variable for larger codebases.
-      REACHABLE_AGENT_TIMEOUT_SECONDS: ${{ vars.REACHABLE_AGENT_TIMEOUT_SECONDS || '180' }}
+      REACHABLE_AGENT_TIMEOUT_SECONDS: ${{ vars.REACHABLE_AGENT_TIMEOUT_SECONDS || '300' }}
       # Same guardrail for Reachable's remediation-bundle synthesis. This runs
       # before the coding agent, so it needs its own timeout.
       REACHABLE_REMEDIATE_TIMEOUT_SECONDS: ${{ vars.REACHABLE_REMEDIATE_TIMEOUT_SECONDS || '120' }}
