@@ -1,4 +1,4 @@
-name: Reachable Remediation Template
+name: "Reachable Release Gate: Scan, Fix, Prove"
 
 on:
   workflow_dispatch:

@@ -8,6 +8,49 @@ CI/CD scanning, agentic remediation, and DB-backed post-fix proof.
 
 ![Reachable CI remediation flow](docs/remediation-flow.svg)
 
+## Release Manager Demo Runbook
+
+Use this workflow for the live release-gate demo:
+
+[GitHub Actions → Reachable Release Gate: Scan, Fix, Prove](https://github.com/sthenos-security/reach-testbed-go/actions/workflows/reachable-remediate.yml)
+
+Click **Run workflow** and use these settings:
+
+| Control | Demo value | Release-manager meaning |
+|---------|------------|-------------------------|
+| Branch | `main` | Start from the intentionally vulnerable release candidate. |
+| `remediate` | `true` | Let CI create a fix branch and apply a bounded patch. |
+| `rescan_only` | `false` | Run the full release-gate loop: scan baseline, patch branch, run tests, rescan proof, publish evidence. |
+| `target_branch` | `main` | The branch being evaluated as the release candidate. |
+| `remediation_mode` | `codex-openai` | Uses Codex with `OPENAI_API_KEY`. Use `claude-anthropic` only when validating Claude Code with `ANTHROPIC_API_KEY`. |
+| `prompt_profile` | `balanced` | Keeps fixes scoped: enough context to repair the issue queue without turning the run into an open-ended refactor. |
+| `signal_types` | `all` | Covers all demo blocker classes: CVE, CWE, secret, DLP, and AI findings. |
+| `max_batches` | `1` | One bounded fix batch for the live demo. |
+| `rescan_strategy` | `final` | Run the proof scan after the patch and project tests complete. |
+| `require_ai` | `true` | Fail fast if the selected AI key is missing, instead of producing a confusing partial run. |
+| `fresh_scan` | `false` | Reuse the Reachable cache for speed. Set `true` only when you intentionally want a clean no-cache evidence run. |
+| `create_pr` | `true` | Open the reviewable fix PR for the release manager. |
+| `run_project_tests` | `true` | Run `go test ./...` after the patch, before the security proof scan. |
+
+What a successful run proves:
+
+| Evidence | Release-manager meaning |
+|----------|-------------------------|
+| Baseline scan | The release candidate contains the expected blocker queue. |
+| Fix branch | CI produced a `reachable-remediate-*` branch instead of changing `main` directly. |
+| Project tests | The patch still passes the application test command. |
+| Proof scan | Reachable rescanned the fix branch from the database source of truth. |
+| Pull request | The fix is ready for normal review and merge policy. |
+| Public proof page | Sanitized evidence shows baseline findings, fixed findings, branch, commit, scan IDs, timestamps, runtime, AI cost, and artifact links. |
+
+The other workflows in the Actions menu are support workflows:
+
+| Workflow | Purpose |
+|----------|---------|
+| `Reachable Release Gate: Scan, Fix, Prove` | Main demo workflow. Run this to show the release-gate loop. |
+| `Reachable Release Gate: Reset Demo Branches` | Deletes old `reachable-remediate-*` branches when resetting the demo. Use `dry_run=true` first if you want to preview. |
+| `pages-build-deployment` | GitHub's automatic Pages publishing job. Do not run this manually; it appears after the demo workflow publishes results. |
+
 ## Start Here
 
 | Question | Answer |
@@ -15,7 +58,7 @@ CI/CD scanning, agentic remediation, and DB-backed post-fix proof.
 | What is this repo? | A controlled vulnerable Go application used to demonstrate Reachable CI scanning, autonomous remediation, and DB-backed proof that a remediation branch is clean. |
 | What do I configure? | Add one AI key as a repository secret: `OPENAI_API_KEY` for `codex-openai` / Codex (OpenAI), or `ANTHROPIC_API_KEY` for `claude-anthropic` / Claude Code (Anthropic). Optional workflow inputs are listed below. |
 | Where is the CI pipeline? | [.github/workflows/reachable-remediate.yml](.github/workflows/reachable-remediate.yml). That workflow scans, optionally remediates, rescans, verifies the DB proof, and publishes sanitized evidence. |
-| Where do I run it? | GitHub Actions → [Reachable Remediation Template](https://github.com/sthenos-security/reach-testbed-go/actions/workflows/reachable-remediate.yml). |
+| Where do I run it? | GitHub Actions → [Reachable Release Gate: Scan, Fix, Prove](https://github.com/sthenos-security/reach-testbed-go/actions/workflows/reachable-remediate.yml). |
 | Where are the verdict and artifacts? | [Public proof page](https://sthenos-security.github.io/reach-testbed-go/) and [published artifacts](https://sthenos-security.github.io/reach-testbed-go/#artifacts). |
 | What is the expected vulnerable contract? | [EXPECTED.md](EXPECTED.md) and [expected/baseline.json](expected/baseline.json). |
 
@@ -155,7 +198,7 @@ viewer to know these inputs.
 | [expected/baseline.json](expected/baseline.json) | Machine-readable expected scanner contract. |
 | [ci/](ci/) | DB proof, page summary, and CI helper scripts. |
 | [docs/](docs/) | Public demo page assets and sanitized reports. |
-| [.github/workflows/](.github/workflows/) | CI remediation and cleanup workflows. |
+| [.github/workflows/](.github/workflows/) | Demo scan/remediation/proof publishing workflow and branch cleanup workflow. |
 
 ## What “Fixed” Means
 

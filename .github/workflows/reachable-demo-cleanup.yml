@@ -1,4 +1,4 @@
-name: Reachable Demo Cleanup
+name: "Reachable Release Gate: Reset Demo Branches"
 
 on:
   workflow_dispatch:
