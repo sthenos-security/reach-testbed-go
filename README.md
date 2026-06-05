@@ -52,9 +52,9 @@ page.
 
 Automatic PR creation is controlled by CI permissions, not by Reachable scanner
 tokens. Branch push, artifact upload, Pages publishing, and SARIF upload use the
-built-in `GITHUB_TOKEN`. PR creation uses the repository secret `CI_PR_TOKEN`
-when configured, then falls back to `GITHUB_TOKEN`. Branch protection and review
-policy still decide whether anything can merge.
+built-in `GITHUB_TOKEN`; PR creation uses that same workflow token when the
+repository allows GitHub Actions to create pull requests. Branch protection and
+review policy still decide whether anything can merge.
 
 ### Run A Scan-Only Evidence Demo
 
@@ -133,7 +133,7 @@ GitHub Actions:
 |----------|--------|
 | What is this repo? | A controlled vulnerable Go application used to demonstrate Reachable CI scanning, autonomous remediation, and DB-backed proof that a remediation branch is clean. |
 | What do I configure? | Add one AI key as a repository secret: `OPENAI_API_KEY` for `codex-openai` / Codex (OpenAI), or `ANTHROPIC_API_KEY` for `claude-anthropic` / Claude Code (Anthropic). Optional workflow inputs are listed below. |
-| How does the PR open? | The workflow uses `CI_PR_TOKEN` for PR creation when configured, then falls back to GitHub Actions `GITHUB_TOKEN`. Branch protection and reviews still control merge. |
+| How does the PR open? | The workflow uses the built-in GitHub Actions `GITHUB_TOKEN` for PR creation. Branch protection and reviews still control merge. |
 | Where is the CI pipeline? | [.github/workflows/reachable-remediate.yml](.github/workflows/reachable-remediate.yml). That workflow scans, optionally remediates, rescans, verifies the DB proof, and publishes sanitized evidence. |
 | Where do I run it? | GitHub Actions → [Run Demo](https://github.com/sthenos-security/reach-testbed-go/actions/workflows/reachable-remediate.yml). |
 | Where are the verdict and artifacts? | [Public verdict status page](https://sthenos-security.github.io/reach-testbed-go/) and [published artifacts](https://sthenos-security.github.io/reach-testbed-go/#artifacts). |

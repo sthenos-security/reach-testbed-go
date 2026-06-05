@@ -17,7 +17,7 @@ jobs:
       issues: write
       actions: write
     env:
-      GH_TOKEN: ${{ secrets.CI_PR_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -50,13 +50,13 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${GH_TOKEN:-}" ]; then
-            echo "::error::CI_PR_TOKEN is not configured."
+            echo "::error::GITHUB_TOKEN is not configured."
             exit 1
           fi
-          echo "Testing PR creation with CI_PR_TOKEN through gh pr create."
-          echo "CI_PR_TOKEN identity:"
+          echo "Testing PR creation with GitHub Actions GITHUB_TOKEN through gh pr create."
+          echo "GITHUB_TOKEN identity:"
           gh api user --jq '{login: .login, type: .type}'
-          echo "CI_PR_TOKEN repository permissions:"
+          echo "GITHUB_TOKEN repository permissions:"
           gh api "repos/${GITHUB_REPOSITORY}" --jq '{permissions: .permissions, role_name: .role_name}'
           set +e
           pr_output="$(gh pr create \
