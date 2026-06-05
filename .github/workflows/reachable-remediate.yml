@@ -580,6 +580,11 @@ jobs:
               return not (
                   path == ".reachable"
                   or path.startswith(".reachable/")
+                  # Demo remediation branches must not carry workflow edits.
+                  # GitHub blocks built-in app tokens from pushing workflow
+                  # changes, and workflow changes are not part of the app fix.
+                  or path == ".github/workflows"
+                  or path.startswith(".github/workflows/")
                   or fnmatch.fnmatch(path, "reachable*.sarif")
                   or fnmatch.fnmatch(path.rsplit("/", 1)[-1], "reachable*.sarif")
               )
@@ -610,6 +615,13 @@ jobs:
             exit 1
           fi
           git commit -m "fix: reachable remediation batch"
+          push_token="${REACHABLE_GITHUB_TOKEN:-${GH_TOKEN:-}}"
+          if [ -n "$push_token" ]; then
+            git remote set-url origin "https://x-access-token:${push_token}@github.com/${GITHUB_REPOSITORY}.git"
+            echo "Pushing remediation branch with configured GitHub token."
+          else
+            echo "Pushing remediation branch with checkout credentials."
+          fi
           git push origin "$REACHABLE_REMEDIATION_BRANCH"
 
       - name: Open remediation PR
