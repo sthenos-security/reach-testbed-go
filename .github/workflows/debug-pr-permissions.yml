@@ -11,7 +11,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
-  actions: read
+  actions: write
 
 jobs:
   debug-pr-permissions:
@@ -31,7 +31,7 @@ jobs:
           echo "Repository: ${GITHUB_REPOSITORY}"
           echo "Run id: ${GITHUB_RUN_ID}"
           echo "Event: ${GITHUB_EVENT_NAME}"
-          echo "Requested job permissions: contents=write, pull-requests=write, actions=read"
+          echo "Requested job permissions: contents=write, pull-requests=write, actions=write"
           echo "Repository Actions workflow permission policy:"
           curl -sS \
             -H "Accept: application/vnd.github+json" \

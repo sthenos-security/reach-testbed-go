@@ -76,7 +76,7 @@ permissions:
   contents: write
   pull-requests: write
   security-events: write
-  actions: read
+  actions: write
   pages: write
   id-token: write
 
