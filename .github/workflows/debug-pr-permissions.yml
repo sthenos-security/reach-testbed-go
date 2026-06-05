@@ -17,7 +17,7 @@ jobs:
       issues: write
       actions: write
     env:
-      GH_TOKEN: ${{ github.token }}
+      GH_TOKEN: ${{ secrets.CI_PR_TOKEN }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -50,15 +50,26 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${GH_TOKEN:-}" ]; then
-            echo "::error::GITHUB_TOKEN is not configured."
+            echo "::error::CI_PR_TOKEN is not configured."
             exit 1
           fi
-          echo "Testing PR creation with GitHub Actions GITHUB_TOKEN through gh pr create."
+          unset GITHUB_TOKEN
+          echo "CI_PR_TOKEN present: yes"
+          echo "CI_PR_TOKEN length: ${#GH_TOKEN}"
+          case "$GH_TOKEN" in
+            github_pat_*) echo "CI_PR_TOKEN prefix check: github_pat_ matched" ;;
+            *) echo "::error::CI_PR_TOKEN does not start with github_pat_"; exit 1 ;;
+          esac
+          case "$GH_TOKEN" in
+            github_pat_11B3AD7IA0F*) echo "CI_PR_TOKEN expected prefix check: matched" ;;
+            *) echo "::error::CI_PR_TOKEN expected prefix check failed"; exit 1 ;;
+          esac
+          echo "Testing PR creation with CI_PR_TOKEN through gh pr create."
           echo "gh auth status:"
           gh auth status || true
-          echo "GITHUB_TOKEN identity:"
-          gh api user --jq '{login: .login, type: .type}' || echo "GITHUB_TOKEN is a GitHub App token; /user is not available."
-          echo "GITHUB_TOKEN repository permissions:"
+          echo "CI_PR_TOKEN identity:"
+          gh api user --jq '{login: .login, type: .type}'
+          echo "CI_PR_TOKEN repository permissions:"
           gh api "repos/${GITHUB_REPOSITORY}" --jq '{permissions: .permissions, role_name: .role_name}'
           set +e
           pr_output="$(gh pr create \
