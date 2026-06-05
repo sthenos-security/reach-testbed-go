@@ -54,6 +54,8 @@ jobs:
             exit 1
           fi
           echo "Testing PR creation with GitHub Actions GITHUB_TOKEN through gh pr create."
+          echo "gh auth status:"
+          gh auth status || true
           echo "GITHUB_TOKEN identity:"
           gh api user --jq '{login: .login, type: .type}' || echo "GITHUB_TOKEN is a GitHub App token; /user is not available."
           echo "GITHUB_TOKEN repository permissions:"
