@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Gate the demo on Reachable DB truth, not on SARIF rows."""
+"""Gate the demo on Reachable repo.db truth."""
 
 from __future__ import annotations
 

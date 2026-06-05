@@ -582,8 +582,7 @@ jobs:
       - name: Gate Reachable remediation proof
         if: ${{ inputs.remediate && !inputs.rescan_only }}
         run: |
-          # Demo verdict is DB-backed. SARIF is an export artifact and may
-          # include defended compatibility rows; it is not the source of truth.
+          # Demo verdict is DB-backed. repo.db is the only pass/fail authority.
           python3 ci/check-db-remediation-proof.py .reachable/ci-artifacts
 
       - name: Commit remediation branch
