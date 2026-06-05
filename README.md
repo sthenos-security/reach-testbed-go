@@ -25,7 +25,10 @@ use this workflow:
 
 ### Run A Full Fix Demo
 
-Click **Run workflow** and set:
+Click **Run workflow** and leave the defaults selected. The defaults run the
+full release-gate demo: scan `main`, create a remediation branch, run the
+agent, run project tests, rescan after each bounded batch, stop when the DB
+proof is clean, open a PR, and publish the verdict page.
 
 | Control | Demo value | Release-manager meaning |
 |---------|------------|-------------------------|

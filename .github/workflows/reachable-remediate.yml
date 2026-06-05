@@ -6,7 +6,7 @@ on:
       remediate:
         description: "Kill switch: allow CI to change code and open a remediation PR"
         type: boolean
-        default: false
+        default: true
       rescan_only:
         description: "Only prove the selected branch; do not create or edit a branch"
         type: boolean
