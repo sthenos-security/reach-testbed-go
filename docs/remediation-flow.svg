@@ -100,11 +100,12 @@
 
   <rect x="1260" y="590" width="450" height="280" class="agentCard"/>
   <text x="1298" y="640" class="tiny" fill="#9debdc">AGENT EXECUTOR</text>
-  <text x="1298" y="684" class="label text">Codex (OpenAI)</text>
-  <text x="1298" y="714" class="label text">or Claude Code</text>
-  <text x="1298" y="744" class="body muted">(Anthropic)</text>
-  <text x="1298" y="776" class="body muted">edits review branch</text>
-  <text x="1298" y="802" class="body muted">from bounded task</text>
+  <text x="1298" y="680" class="label text">Codex</text>
+  <text x="1392" y="680" class="body muted">(OpenAI)</text>
+  <text x="1298" y="718" class="label text">Claude Code</text>
+  <text x="1468" y="718" class="body muted">(Anthropic)</text>
+  <text x="1298" y="770" class="body muted">edits review branch</text>
+  <text x="1298" y="796" class="body muted">from bounded task</text>
   <rect x="1298" y="820" width="92" height="36" class="badge"/>
   <text x="1316" y="844" class="mono" fill="#b9c8dc">agent</text>
   <rect x="1408" y="820" width="96" height="36" class="badge"/>
