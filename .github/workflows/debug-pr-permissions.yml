@@ -46,10 +46,15 @@ jobs:
 
       - name: Create diagnostic PR
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.CI_PR_TOKEN || github.token }}
+          CI_PR_TOKEN: ${{ secrets.CI_PR_TOKEN }}
         run: |
           set -euo pipefail
-          echo "Testing PR creation with GITHUB_TOKEN through gh pr create."
+          if [ -n "${CI_PR_TOKEN:-}" ]; then
+            echo "Testing PR creation with CI_PR_TOKEN through gh pr create."
+          else
+            echo "Testing PR creation with GITHUB_TOKEN through gh pr create."
+          fi
           gh pr create \
             --base main \
             --head "${GITHUB_REPOSITORY_OWNER}:${DIAGNOSTIC_BRANCH}" \
@@ -62,7 +67,7 @@ jobs:
       - name: Cleanup diagnostic PR and branch
         if: ${{ always() && inputs.cleanup }}
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.CI_PR_TOKEN || github.token }}
         run: |
           set -euo pipefail
 

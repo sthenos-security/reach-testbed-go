@@ -120,11 +120,14 @@ jobs:
       REACHABLE_GITHUB_TOKEN: ${{ secrets.REACHABLE_GITHUB_TOKEN }}
 
       # GitHub Actions workflow token. This token owns checkout, branch push,
-      # PR creation, artifact upload, Pages publishing, and SARIF upload.
-      # Repository Actions settings must grant read/write workflow permissions
-      # and allow GitHub Actions to create pull requests.
+      # artifact upload, Pages publishing, and SARIF upload.
       GITHUB_TOKEN: ${{ github.token }}
       GH_TOKEN: ${{ github.token }}
+
+      # Optional PR-authoring token. This is separate from Reachable scanner
+      # tokens and is only used for opening the review PR when GitHub's built-in
+      # Actions token is not allowed to call createPullRequest.
+      CI_PR_TOKEN: ${{ secrets.CI_PR_TOKEN }}
 
       # Optional MCP context token, separate from workflow control.
       MCP_GITHUB_TOKEN: ${{ secrets.MCP_GITHUB_TOKEN }}
@@ -264,7 +267,8 @@ jobs:
           echo "Reachable CI credential preflight:"
           echo "  remediation mode: ${REACHABLE_REMEDIATION_MODE}"
           echo "  selected scan provider: ${REACHABLE_LLM_PROVIDER_LABEL:-$REACHABLE_LLM_PROVIDER}"
-          echo "  workflow GITHUB_TOKEN: present (checkout, branch push, PR, Pages, SARIF)"
+          echo "  workflow GITHUB_TOKEN: present (checkout, branch push, Pages, SARIF)"
+          echo "  CI_PR_TOKEN configured: $([ -n "${CI_PR_TOKEN:-}" ] && echo yes || echo no) (PR creation only)"
           echo "  REACHABLE_GITHUB_TOKEN configured: $([ -n "${REACHABLE_GITHUB_TOKEN:-}" ] && echo yes || echo no) (Reachable GitHub enrichment only)"
           echo "  MCP_GITHUB_TOKEN configured: $([ -n "${MCP_GITHUB_TOKEN:-}" ] && echo yes || echo no) (MCP context only)"
           echo "  OPENAI_API_KEY configured: $([ "$has_openai" -eq 1 ] && echo yes || echo no)"
@@ -655,7 +659,8 @@ jobs:
       - name: Open remediation PR
         if: ${{ inputs.remediate && !inputs.rescan_only && inputs.create_pr }}
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.CI_PR_TOKEN || github.token }}
+          CI_PR_TOKEN: ${{ secrets.CI_PR_TOKEN }}
         run: |
           if [ -z "${GH_TOKEN:-}" ]; then
             echo "No GitHub token available for PR creation."
@@ -663,8 +668,12 @@ jobs:
             exit 0
           fi
 
-          echo "Opening remediation PR with workflow GITHUB_TOKEN."
-          echo "GITHUB_TOKEN PR creation requires workflow permissions: contents=write, pull-requests=write, actions=write, plus the repository setting that allows GitHub Actions to create pull requests."
+          if [ -n "${CI_PR_TOKEN:-}" ]; then
+            echo "Opening remediation PR with CI_PR_TOKEN."
+          else
+            echo "Opening remediation PR with workflow GITHUB_TOKEN."
+            echo "GITHUB_TOKEN PR creation requires workflow permissions: contents=write, pull-requests=write, actions=write, plus the repository setting that allows GitHub Actions to create pull requests."
+          fi
 
           set +e
           pr_output="$(gh pr create \
@@ -679,7 +688,7 @@ jobs:
             echo "::warning::Could not open remediation PR automatically."
             printf '%s\n' "$pr_output"
             echo "Remediation branch pushed: https://github.com/${GITHUB_REPOSITORY}/tree/${REACHABLE_REMEDIATION_BRANCH}"
-            echo "Check Settings > Actions > General > Workflow permissions and the PR creation checkbox."
+            echo "Check CI_PR_TOKEN first; otherwise check Settings > Actions > General > Workflow permissions and the PR creation checkbox."
             exit 0
           fi
 
