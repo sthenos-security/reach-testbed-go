@@ -286,7 +286,7 @@ def _expected_demo_summary(*, artifact_dir: Path) -> dict[str, Any]:
         "after_ai": after_ai,
         "observed": {
             "before": _db_observed_scan(baseline_ctx),
-            "after": _db_observed_scan(after_ctx),
+            "after": _db_observed_scan(after_ctx, deferred_keys=set(deferred_rows)),
         },
         "evidence_source": "repo.db",
     }
@@ -540,7 +540,11 @@ def _db_ai_usage_summary(ctx: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _db_observed_scan(ctx: dict[str, Any]) -> dict[str, Any]:
+def _db_observed_scan(
+    ctx: dict[str, Any],
+    *,
+    deferred_keys: set[tuple[str, str, int]] | None = None,
+) -> dict[str, Any]:
     """Return public, observed DB findings for one concrete scan.
 
     This intentionally does not compare against the expected contract and does
@@ -580,6 +584,7 @@ def _db_observed_scan(ctx: dict[str, Any]) -> dict[str, Any]:
         row["normalized_path"] = path
         row["line_number"] = line
         row["attacker"] = attacker.get((_db_family(row), path, line), {})
+        row["deferred"] = _row_matches_deferred(row, deferred_keys or set())
         public_rows.append(_observed_public_row(row))
     public_rows.sort(key=_observed_sort_key)
     return {
@@ -604,7 +609,8 @@ def _observed_public_row(row: dict[str, Any]) -> dict[str, Any]:
         "reachability": reachability,
         "exploitability": exploitability,
         "prod_status": str(row.get("prod_status") or "UNKNOWN").upper(),
-        "blocks_release": _signal_blocks_remediation(row),
+        "deferred": bool(row.get("deferred")),
+        "blocks_release": _signal_blocks_remediation(row) and not bool(row.get("deferred")),
         "location": location,
         "package": _package_label(row),
         "message": str(row.get("title") or row.get("description") or row.get("rule_id") or ""),
@@ -1569,7 +1575,7 @@ def _observed_scan_panel(title: str, observed: dict[str, Any]) -> str:
       <h3>{html.escape(title)}</h3>
       <div class="table-scroll">
         <table>
-        <thead><tr><th>Signal</th><th>Risk</th><th>Reachability</th><th>Exploitability</th><th>Release blocker</th><th>Location</th><th>Package</th><th>Message / evidence</th></tr></thead>
+          <thead><tr><th>Signal</th><th>Risk</th><th>Reachability</th><th>Exploitability</th><th>Release status</th><th>Location</th><th>Package</th><th>Message / evidence</th></tr></thead>
           <tbody>{table_rows}</tbody>
         </table>
       </div>
@@ -1577,8 +1583,15 @@ def _observed_scan_panel(title: str, observed: dict[str, Any]) -> str:
 
 
 def _observed_scan_row(item: dict[str, Any]) -> str:
-    blocker = "Yes" if item.get("blocks_release") else "No"
-    blocker_class = "bad" if item.get("blocks_release") else "reachable"
+    if item.get("deferred"):
+        blocker = "Deferred"
+        blocker_class = "warning"
+    elif item.get("blocks_release"):
+        blocker = "Blocker"
+        blocker_class = "bad"
+    else:
+        blocker = "No blocker"
+        blocker_class = "reachable"
     evidence = str(item.get("evidence") or "")
     message = str(item.get("message") or "")
     if evidence:
