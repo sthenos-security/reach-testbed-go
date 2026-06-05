@@ -52,6 +52,10 @@ jobs:
           set -euo pipefail
           if [ -n "${CI_PR_TOKEN:-}" ]; then
             echo "Testing PR creation with CI_PR_TOKEN through gh pr create."
+            echo "CI_PR_TOKEN identity:"
+            gh api user --jq '{login: .login, type: .type}'
+            echo "CI_PR_TOKEN repository permissions:"
+            gh api "repos/${GITHUB_REPOSITORY}" --jq '{permissions: .permissions, role_name: .role_name}'
           else
             echo "Testing PR creation with GITHUB_TOKEN through gh pr create."
           fi
