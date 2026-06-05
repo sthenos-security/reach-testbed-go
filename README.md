@@ -10,11 +10,14 @@ CI/CD scanning, agentic remediation, and DB-backed post-fix proof.
 
 ## Release Manager Demo Runbook
 
-Use this workflow for the live release-gate demo:
+The diagram above is the release-gate flow. To run that flow in GitHub Actions,
+use this workflow:
 
 [GitHub Actions → Reachable Release Gate: Scan, Fix, Prove](https://github.com/sthenos-security/reach-testbed-go/actions/workflows/reachable-remediate.yml)
 
-Click **Run workflow** and use these settings:
+### Run A Full Fix Demo
+
+Click **Run workflow** and set:
 
 | Control | Demo value | Release-manager meaning |
 |---------|------------|-------------------------|
@@ -32,7 +35,44 @@ Click **Run workflow** and use these settings:
 | `create_pr` | `true` | Open the reviewable fix PR for the release manager. |
 | `run_project_tests` | `true` | Run `go test ./...` after the patch, before the security proof scan. |
 
-What a successful run proves:
+Expected result: the workflow creates a `reachable-remediate-*` branch, runs
+the project test gate, rescans that branch, opens a PR, and publishes the proof
+page.
+
+### Run A Scan-Only Evidence Demo
+
+Use this when you want to show detection and reporting without allowing CI to
+write a fix branch.
+
+| Control | Demo value | Release-manager meaning |
+|---------|------------|-------------------------|
+| Branch | `main` | Scan the intentionally vulnerable release candidate. |
+| `remediate` | `false` | Do not invoke the coding agent or change code. |
+| `rescan_only` | `false` | Run only the baseline scan and evidence publication. |
+| `target_branch` | `main` | Branch being evaluated. |
+| `require_ai` | `true` | Fail early if AI enrichment cannot run. |
+| `fresh_scan` | `false` | Reuse cache for speed unless you are testing a clean no-cache run. |
+
+Expected result: the workflow publishes baseline evidence and blocker counts,
+but no remediation branch or PR is created.
+
+### Verify An Existing Fix Branch
+
+Use this after a remediation branch already exists and you only want proof that
+the branch is clean.
+
+| Control | Demo value | Release-manager meaning |
+|---------|------------|-------------------------|
+| Branch | `main` | The workflow definition still runs from `main`. |
+| `remediate` | `false` | Do not invoke the coding agent. |
+| `rescan_only` | `true` | Only scan and prove the selected branch. |
+| `target_branch` | `reachable-remediate-*` | Existing fix branch to verify. |
+| `require_ai` | `true` | Keep AI-backed reachability/enrichment enabled. |
+
+Expected result: the workflow scans the selected branch, gates on zero
+release blockers, and publishes proof for that branch.
+
+### What A Successful Full Run Proves
 
 | Evidence | Release-manager meaning |
 |----------|-------------------------|
@@ -43,13 +83,32 @@ What a successful run proves:
 | Pull request | The fix is ready for normal review and merge policy. |
 | Public proof page | Sanitized evidence shows baseline findings, fixed findings, branch, commit, scan IDs, timestamps, runtime, AI cost, and artifact links. |
 
-The other workflows in the Actions menu are support workflows:
+### Actions Menu
 
 | Workflow | Purpose |
 |----------|---------|
 | `Reachable Release Gate: Scan, Fix, Prove` | Main demo workflow. Run this to show the release-gate loop. |
 | `Reachable Release Gate: Reset Demo Branches` | Deletes old `reachable-remediate-*` branches when resetting the demo. Use `dry_run=true` first if you want to preview. |
 | `pages-build-deployment` | GitHub's automatic Pages publishing job. Do not run this manually; it appears after the demo workflow publishes results. |
+
+### CI Helper Scripts
+
+The workflow code is [.github/workflows/reachable-remediate.yml](.github/workflows/reachable-remediate.yml).
+These helper scripts keep the release-gate logic auditable and testable outside
+GitHub Actions:
+
+| Script | Used for | Release-gate purpose |
+|--------|----------|----------------------|
+| [ci/smoke-db-remediation-proof.py](ci/smoke-db-remediation-proof.py) | Preflight smoke test | Verifies the DB proof/verdict helper can run before the expensive scan begins. |
+| [ci/reachable-cache-evidence.py](ci/reachable-cache-evidence.py) | Cache telemetry | Records whether the Reachable cache was restored, reused, or created fresh. |
+| [ci/collect-reachable-report.sh](ci/collect-reachable-report.sh) | Artifact collection | Collects the latest Reachable scan outputs into `.reachable/ci-artifacts`. |
+| [ci/check-db-release-blockers.py](ci/check-db-release-blockers.py) | Baseline gate | Reads the scan database and checks that the vulnerable branch matches the expected release-blocker contract. |
+| [ci/write-remediation-ledger.py](ci/write-remediation-ledger.py) | Remediation audit | Writes a sanitized remediation ledger without publishing prompts, rules, transcripts, or raw databases. |
+| [ci/run-agent.sh](ci/run-agent.sh) | Agent execution | Invokes the selected coding agent against the bounded remediation task. |
+| [ci/check-db-remediation-proof.py](ci/check-db-remediation-proof.py) | Proof gate | Reads the proof scan database and fails unless release blockers are gone. |
+| [ci/sanitize-sarif-for-upload.py](ci/sanitize-sarif-for-upload.py) | Platform export hygiene | Sanitizes the SARIF compatibility export before upload; SARIF is not the source of truth. |
+| [ci/build-pages-summary.py](ci/build-pages-summary.py) | Public evidence page | Builds the sanitized Pages report from DB-backed evidence and workflow metadata. |
+| [ci/smoke-pages-summary.py](ci/smoke-pages-summary.py) | Page smoke test | Verifies the public summary/page artifacts have the expected structure. |
 
 ## Start Here
 
