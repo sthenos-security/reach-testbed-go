@@ -13,15 +13,15 @@ CI/CD scanning, agentic remediation, and DB-backed post-fix proof.
 The diagram above is the release-gate flow. To run that flow in GitHub Actions,
 use this workflow:
 
-[GitHub Actions → Reachable Release Gate: Scan, Fix, Prove](https://github.com/sthenos-security/reach-testbed-go/actions/workflows/reachable-remediate.yml)
+[GitHub Actions → Run Demo](https://github.com/sthenos-security/reach-testbed-go/actions/workflows/reachable-remediate.yml)
 
 ### Which Action Do I Run?
 
-| Action in GitHub | Run it? | When to use it |
-|------------------|---------|----------------|
-| `Reachable Release Gate: Scan, Fix, Prove` | Yes | Main demo. Runs the release-gate loop: scan the vulnerable branch, create a fix branch, test it, rescan it, open a PR, and publish proof. |
-| `Reachable Release Gate: Reset Demo Branches` | Optional | Cleanup only. Use it before a fresh demo if old `reachable-remediate-*` branches are cluttering the repo. Start with `dry_run=true` if unsure. |
-| `pages-build-deployment` | No | GitHub-owned name for **Publish Proof Report**. It runs automatically after the main demo uploads the proof page to GitHub Pages. Do not start it manually. |
+| Action shown in GitHub | Customer meaning | Run manually? |
+|------------------------|------------------|---------------|
+| `Run Demo` | Scan the vulnerable release candidate, create a fix branch, test it, rescan it, open a PR, and publish the proof report. | Yes |
+| `Reset Demo` | Delete old `reachable-remediate-*` demo branches before a fresh run. | Optional |
+| `pages-build-deployment` | Publish Report. This is GitHub Pages plumbing created automatically after `Run Demo` publishes results. | No |
 
 ### Run A Full Fix Demo
 
@@ -95,9 +95,9 @@ release blockers, and publishes proof for that branch.
 
 | Workflow | Purpose |
 |----------|---------|
-| `Reachable Release Gate: Scan, Fix, Prove` | Main demo workflow. Run this to show the release-gate loop. |
-| `Reachable Release Gate: Reset Demo Branches` | Deletes old `reachable-remediate-*` branches when resetting the demo. Use `dry_run=true` first if you want to preview. |
-| `pages-build-deployment` | GitHub-owned name for **Publish Proof Report**. Do not run this manually; it appears after the demo workflow publishes results to GitHub Pages. |
+| `Run Demo` | Main demo workflow. Run this to show the release-gate loop. |
+| `Reset Demo` | Deletes old `reachable-remediate-*` branches when resetting the demo. Use `dry_run=true` first if you want to preview. |
+| `pages-build-deployment` | Publish Report. This is GitHub Pages plumbing. Do not run it manually; it appears after `Run Demo` publishes results. |
 
 ### CI Helper Scripts
 
@@ -125,7 +125,7 @@ GitHub Actions:
 | What is this repo? | A controlled vulnerable Go application used to demonstrate Reachable CI scanning, autonomous remediation, and DB-backed proof that a remediation branch is clean. |
 | What do I configure? | Add one AI key as a repository secret: `OPENAI_API_KEY` for `codex-openai` / Codex (OpenAI), or `ANTHROPIC_API_KEY` for `claude-anthropic` / Claude Code (Anthropic). Optional workflow inputs are listed below. |
 | Where is the CI pipeline? | [.github/workflows/reachable-remediate.yml](.github/workflows/reachable-remediate.yml). That workflow scans, optionally remediates, rescans, verifies the DB proof, and publishes sanitized evidence. |
-| Where do I run it? | GitHub Actions → [Reachable Release Gate: Scan, Fix, Prove](https://github.com/sthenos-security/reach-testbed-go/actions/workflows/reachable-remediate.yml). |
+| Where do I run it? | GitHub Actions → [Run Demo](https://github.com/sthenos-security/reach-testbed-go/actions/workflows/reachable-remediate.yml). |
 | Where are the verdict and artifacts? | [Public proof page](https://sthenos-security.github.io/reach-testbed-go/) and [published artifacts](https://sthenos-security.github.io/reach-testbed-go/#artifacts). |
 | What is the expected vulnerable contract? | [EXPECTED.md](EXPECTED.md) and [expected/baseline.json](expected/baseline.json). |
 

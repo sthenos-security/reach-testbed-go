@@ -1,4 +1,4 @@
-name: "Reachable Release Gate: Reset Demo Branches"
+name: "Reset Demo"
 
 on:
   workflow_dispatch:

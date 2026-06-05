@@ -1,4 +1,4 @@
-name: "Reachable Release Gate: Scan, Fix, Prove"
+name: "Run Demo"
 
 on:
   workflow_dispatch:
