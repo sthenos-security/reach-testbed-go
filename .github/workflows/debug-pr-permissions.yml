@@ -61,7 +61,7 @@ jobs:
           set +e
           pr_output="$(gh pr create \
             --base main \
-            --head "${GITHUB_REPOSITORY_OWNER}:${DIAGNOSTIC_BRANCH}" \
+            --head "${DIAGNOSTIC_BRANCH}" \
             --title "Diagnostic PR permission test" \
             --body "This PR was created by the Debug PR Permissions workflow using the configured PR token." 2>&1)"
           pr_status="$?"
@@ -70,7 +70,7 @@ jobs:
           if [ "$pr_status" -ne 0 ]; then
             echo "gh pr create failed; trying REST create-pull-request fallback."
             printf '%s\n' "$pr_output"
-            payload="$(python3 -c 'import json, os; print(json.dumps({"title": "Diagnostic PR permission test", "head": os.environ["GITHUB_REPOSITORY_OWNER"] + ":" + os.environ["DIAGNOSTIC_BRANCH"], "base": "main", "body": "This PR was created by the Debug PR Permissions workflow using the REST fallback."}))')"
+            payload="$(python3 -c 'import json, os; print(json.dumps({"title": "Diagnostic PR permission test", "head": os.environ["DIAGNOSTIC_BRANCH"], "base": "main", "body": "This PR was created by the Debug PR Permissions workflow using the REST fallback."}))')"
             response="$(mktemp)"
             status="$(curl -sS -D "$response.headers" -o "$response" -w "%{http_code}" \
               -X POST \

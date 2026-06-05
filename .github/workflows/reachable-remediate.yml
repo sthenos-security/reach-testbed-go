@@ -672,7 +672,7 @@ jobs:
           set +e
           pr_output="$(gh pr create \
             --base "${{ inputs.target_branch }}" \
-            --head "${GITHUB_REPOSITORY_OWNER}:$REACHABLE_REMEDIATION_BRANCH" \
+            --head "$REACHABLE_REMEDIATION_BRANCH" \
             --title "Reachable remediation demo" \
             --body-file .reachable/remediation-bundle/pr-body.md 2>&1)"
           pr_status="$?"
@@ -682,7 +682,7 @@ jobs:
             echo "gh pr create failed; trying REST create-pull-request fallback."
             printf '%s\n' "$pr_output"
             pr_body="$(python3 -c 'import json, pathlib; print(json.dumps(pathlib.Path(".reachable/remediation-bundle/pr-body.md").read_text(encoding="utf-8")))')"
-            payload="$(python3 -c 'import json, os, sys; print(json.dumps({"title": "Reachable remediation demo", "head": os.environ["GITHUB_REPOSITORY_OWNER"] + ":" + os.environ["REACHABLE_REMEDIATION_BRANCH"], "base": os.environ["TARGET_BRANCH"], "body": json.loads(sys.argv[1])}))' "$pr_body")"
+            payload="$(python3 -c 'import json, os, sys; print(json.dumps({"title": "Reachable remediation demo", "head": os.environ["REACHABLE_REMEDIATION_BRANCH"], "base": os.environ["TARGET_BRANCH"], "body": json.loads(sys.argv[1])}))' "$pr_body")"
             response="$(mktemp)"
             status="$(curl -sS -D "$response.headers" -o "$response" -w "%{http_code}" \
               -X POST \
