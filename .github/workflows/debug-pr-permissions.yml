@@ -46,10 +46,14 @@ jobs:
 
       - name: Create diagnostic PR
         env:
-          GH_TOKEN: ${{ secrets.CI_PR_TOKEN || github.token }}
+          GH_TOKEN: ${{ secrets.CI_PR_TOKEN }}
           CI_PR_TOKEN: ${{ secrets.CI_PR_TOKEN }}
         run: |
           set -euo pipefail
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::error::CI_PR_TOKEN is not configured."
+            exit 1
+          fi
           if [ -n "${CI_PR_TOKEN:-}" ]; then
             echo "Testing PR creation with CI_PR_TOKEN through gh pr create."
             echo "CI_PR_TOKEN identity:"
@@ -71,7 +75,7 @@ jobs:
           if [ "$pr_status" -ne 0 ]; then
             echo "gh pr create failed; trying REST create-pull-request fallback."
             printf '%s\n' "$pr_output"
-            payload="$(python3 -c 'import json, os; print(json.dumps({"title": "Diagnostic PR permission test", "head": f"{os.environ[\"GITHUB_REPOSITORY_OWNER\"]}:{os.environ[\"DIAGNOSTIC_BRANCH\"]}", "base": "main", "body": "This PR was created by the Debug PR Permissions workflow using the REST fallback."}))')"
+            payload="$(python3 -c 'import json, os; print(json.dumps({"title": "Diagnostic PR permission test", "head": os.environ["GITHUB_REPOSITORY_OWNER"] + ":" + os.environ["DIAGNOSTIC_BRANCH"], "base": "main", "body": "This PR was created by the Debug PR Permissions workflow using the REST fallback."}))')"
             response="$(mktemp)"
             status="$(curl -sS -D "$response.headers" -o "$response" -w "%{http_code}" \
               -X POST \

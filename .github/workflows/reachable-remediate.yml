@@ -659,11 +659,12 @@ jobs:
       - name: Open remediation PR
         if: ${{ inputs.remediate && !inputs.rescan_only && inputs.create_pr }}
         env:
-          GH_TOKEN: ${{ secrets.CI_PR_TOKEN || github.token }}
+          GH_TOKEN: ${{ secrets.CI_PR_TOKEN }}
           CI_PR_TOKEN: ${{ secrets.CI_PR_TOKEN }}
+          TARGET_BRANCH: ${{ inputs.target_branch }}
         run: |
           if [ -z "${GH_TOKEN:-}" ]; then
-            echo "No GitHub token available for PR creation."
+            echo "CI_PR_TOKEN is not configured; skipping automatic PR creation."
             echo "Remediation branch pushed: https://github.com/${GITHUB_REPOSITORY}/tree/${REACHABLE_REMEDIATION_BRANCH}"
             exit 0
           fi
@@ -685,14 +686,30 @@ jobs:
           set -e
 
           if [ "$pr_status" -ne 0 ]; then
-            echo "::warning::Could not open remediation PR automatically."
+            echo "gh pr create failed; trying REST create-pull-request fallback."
             printf '%s\n' "$pr_output"
-            echo "Remediation branch pushed: https://github.com/${GITHUB_REPOSITORY}/tree/${REACHABLE_REMEDIATION_BRANCH}"
-            echo "Check CI_PR_TOKEN first; otherwise check Settings > Actions > General > Workflow permissions and the PR creation checkbox."
-            exit 0
+            pr_body="$(python3 -c 'import json, pathlib; print(json.dumps(pathlib.Path(".reachable/remediation-bundle/pr-body.md").read_text(encoding="utf-8")))')"
+            payload="$(python3 -c 'import json, os, sys; print(json.dumps({"title": "Reachable remediation demo", "head": os.environ["GITHUB_REPOSITORY_OWNER"] + ":" + os.environ["REACHABLE_REMEDIATION_BRANCH"], "base": os.environ["TARGET_BRANCH"], "body": json.loads(sys.argv[1])}))' "$pr_body")"
+            response="$(mktemp)"
+            status="$(curl -sS -D "$response.headers" -o "$response" -w "%{http_code}" \
+              -X POST \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls" \
+              --data "$payload")"
+            echo "REST PR create HTTP status: $status"
+            grep -i '^x-accepted-github-permissions:' "$response.headers" || true
+            cat "$response"
+            if [ "$status" != "201" ]; then
+              echo "::warning::Could not open remediation PR automatically."
+              echo "Remediation branch pushed: https://github.com/${GITHUB_REPOSITORY}/tree/${REACHABLE_REMEDIATION_BRANCH}"
+              echo "Check CI_PR_TOKEN permissions for Contents, Issues, and Pull requests: Read and write."
+              exit 0
+            fi
+          else
+            printf '%s\n' "$pr_output"
           fi
-
-          printf '%s\n' "$pr_output"
 
       - name: Remove private remediation bundle
         if: always()
