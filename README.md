@@ -144,18 +144,18 @@ viewer to know these inputs.
 
 ## Repository Layout
 
-```text
-cmd/server/                HTTP entrypoint and route registration
-internal/handlers/         Vulnerable, defended, and assess signal cases
-internal/safety/           Guard helpers used by defended cases
-config/                    Synthetic insecure configuration cases
-deploy/                    Synthetic IaC cases
-testdata/dlp/              Synthetic DLP corpus
-expected/baseline.json     Machine-readable expected scanner contract
-ci/                        DB proof, page summary, and CI helper scripts
-docs/                      Public demo page assets and sanitized reports
-.github/workflows/         CI remediation and cleanup workflows
-```
+| Path | Purpose |
+|------|---------|
+| [cmd/server/](cmd/server/) | HTTP entrypoint and route registration. |
+| [internal/handlers/](internal/handlers/) | Vulnerable, defended, and assessed signal cases. |
+| [internal/safety/](internal/safety/) | Guard helpers used by defended cases. |
+| [config/](config/) | Synthetic insecure configuration cases. |
+| [deploy/](deploy/) | Synthetic IaC cases. |
+| [testdata/dlp/](testdata/dlp/) | Synthetic DLP corpus. |
+| [expected/baseline.json](expected/baseline.json) | Machine-readable expected scanner contract. |
+| [ci/](ci/) | DB proof, page summary, and CI helper scripts. |
+| [docs/](docs/) | Public demo page assets and sanitized reports. |
+| [.github/workflows/](.github/workflows/) | CI remediation and cleanup workflows. |
 
 ## What “Fixed” Means
 
@@ -167,5 +167,3 @@ For this demo, “fixed” means:
 3. The proof gate reports zero remaining release blockers.
 4. The public report displays the branch, commit, scan ID, timestamp, and
    artifact links that produced the verdict.
-
-That is the story the demo page must tell. Anything else is support detail.
