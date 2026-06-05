@@ -47,15 +47,15 @@ proof is clean, open a PR, and publish the verdict page.
 | `run_project_tests` | `true` | Run `go test ./...` after the patch, before the security proof scan. |
 
 Expected result: the workflow creates a `reachable-remediate-*` branch, runs
-the project test gate, rescans that branch, and publishes the proof page. If
-GitHub accepts CI pull-request creation, the workflow also opens the PR. If
-GitHub blocks API PR creation, use the manual fallback below; the remediation
-branch and DB-backed proof page are still the evidence.
+the project test gate, rescans that branch, and publishes the proof page. PR
+creation is a convenience wrapper around that branch. If GitHub blocks API PR
+creation or `CI_PR_TOKEN` is missing/revoked, use the manual fallback below;
+the remediation branch and DB-backed proof page are still the demo evidence.
 
 Automatic PR creation is controlled by CI permissions, not by Reachable scanner
 tokens. Branch push, artifact upload, Pages publishing, and SARIF upload use the
-built-in `GITHUB_TOKEN`; PR creation uses `CI_PR_TOKEN`, a repository secret
-containing a GitHub PAT with Contents, Issues, and Pull requests set to read and
+built-in `GITHUB_TOKEN`. Optional PR creation uses `CI_PR_TOKEN`, a repository
+secret containing a GitHub PAT with Contents and Pull requests set to read and
 write. Branch protection and review policy still decide whether anything can
 merge.
 
@@ -151,7 +151,7 @@ GitHub Actions:
 |----------|--------|
 | What is this repo? | A controlled vulnerable Go application used to demonstrate Reachable CI scanning, autonomous remediation, and DB-backed proof that a remediation branch is clean. |
 | What do I configure? | Add one AI key as a repository secret: `OPENAI_API_KEY` for `codex-openai` / Codex (OpenAI), or `ANTHROPIC_API_KEY` for `claude-anthropic` / Claude Code (Anthropic). Optional workflow inputs are listed below. |
-| How does the PR open? | The workflow uses `CI_PR_TOKEN`, a GitHub PAT stored as a repository secret, for PR creation. Branch protection and reviews still control merge. |
+| How does the PR open? | If `CI_PR_TOKEN` is configured and accepted by GitHub, the workflow opens the PR automatically. Otherwise use the manual PR fallback from the pushed `reachable-remediate-*` branch. Branch protection and reviews still control merge. |
 | Where is the CI pipeline? | [.github/workflows/reachable-remediate.yml](.github/workflows/reachable-remediate.yml). That workflow scans, optionally remediates, rescans, verifies the DB proof, and publishes sanitized evidence. |
 | Where do I run it? | GitHub Actions → [Run Demo](https://github.com/sthenos-security/reach-testbed-go/actions/workflows/reachable-remediate.yml). |
 | Where are the verdict and artifacts? | [Public verdict status page](https://sthenos-security.github.io/reach-testbed-go/) and [published artifacts](https://sthenos-security.github.io/reach-testbed-go/#artifacts). |
