@@ -2,36 +2,22 @@ package handlers
 
 import (
 	"encoding/base64"
-	"io"
+	"encoding/json"
+	"log"
 	"net/http"
-	"os"
 	"os/exec"
-	"path/filepath"
 )
 
 func FetchTool(w http.ResponseWriter, r *http.Request) {
-	source := r.URL.Query().Get("url")
-	resp, err := http.Get(source)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
-		return
-	}
-	defer resp.Body.Close()
-
-	target := filepath.Join(os.TempDir(), "reach-testbed-tool.bin")
-	out, err := os.Create(target)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer out.Close()
-
-	if _, err := io.Copy(out, io.LimitReader(resp.Body, 2<<20)); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	if r.URL.Query().Get("url") == "" {
+		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 
-	_, _ = w.Write([]byte(target + "\n"))
+	log.Printf("fetch tool request handled with local safe adapter")
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"status": "fetch disabled",
+	})
 }
 
 func SuspiciousMarkers(w http.ResponseWriter, _ *http.Request) {
