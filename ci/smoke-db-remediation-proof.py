@@ -49,6 +49,7 @@ def _write_db(
     baseline_present: bool,
     blocking_after: bool,
     defended_after: bool = False,
+    exploit_verdict_defended_after: bool = False,
 ) -> tuple[Path, Path]:
     baseline_dir = db_path.parent / "main" / "20260604-000001-baseline"
     after_dir = db_path.parent / "main" / "20260604-000002-after"
@@ -161,14 +162,24 @@ def _write_db(
                 "PRODUCTION",
             ),
         )
-    if blocking_after or defended_after:
+    if blocking_after or defended_after or exploit_verdict_defended_after:
+        exploit_verdict_json = None
+        if exploit_verdict_defended_after:
+            exploit_verdict_json = json.dumps(
+                {
+                    "exploitable": False,
+                    "verdict": "not_exploitable",
+                    "defense_rationale": "Smoke residual is defended by explicit exploit verdict.",
+                }
+            )
         conn.execute(
             """
             INSERT INTO signals (
                 scan_id, signal_type, finding_id, display_id, file_path,
                 line_number, severity, title, description, app_reachability,
-                cwe_id, scanner, rule_id, risk_level, prod_status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                cwe_id, scanner, rule_id, risk_level, prod_status,
+                exploit_verdict_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 2,
@@ -186,6 +197,7 @@ def _write_db(
                 "smoke-cwe-78",
                 "CRITICAL",
                 "PRODUCTION",
+                exploit_verdict_json,
             ),
         )
     if defended_after:
@@ -230,6 +242,7 @@ def _run_case(
     baseline_present: bool,
     blocking_after: bool,
     defended_after: bool = False,
+    exploit_verdict_defended_after: bool = False,
     remove_scan_dirs: bool = False,
 ) -> int:
     artifact_dir = tmp / f"artifacts-{name}"
@@ -244,6 +257,7 @@ def _run_case(
         baseline_present=baseline_present,
         blocking_after=blocking_after,
         defended_after=defended_after,
+        exploit_verdict_defended_after=exploit_verdict_defended_after,
     )
     if remove_scan_dirs:
         shutil.rmtree(baseline_dir)
@@ -306,6 +320,14 @@ def main() -> int:
             blocking_after=False,
             defended_after=True,
         )
+        exploit_verdict_defended_status = _run_case(
+            tmp,
+            expected_path=expected_path,
+            name="exploit-verdict-defended-residual-pass",
+            baseline_present=True,
+            blocking_after=False,
+            exploit_verdict_defended_after=True,
+        )
         missing_dirs_status = _run_case(
             tmp,
             expected_path=expected_path,
@@ -314,7 +336,14 @@ def main() -> int:
             blocking_after=False,
             remove_scan_dirs=True,
         )
-    if pass_status or fail_status or missing_status or defended_status or missing_dirs_status:
+    if (
+        pass_status
+        or fail_status
+        or missing_status
+        or defended_status
+        or exploit_verdict_defended_status
+        or missing_dirs_status
+    ):
         print("DB remediation proof smoke failed", file=sys.stderr)
         return 1
     print("DB remediation proof smoke passed")

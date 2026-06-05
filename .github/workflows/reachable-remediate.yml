@@ -39,7 +39,7 @@ on:
       max_batches:
         description: "Maximum serialized remediation batches"
         type: number
-        default: 5
+        default: 3
       rescan_strategy:
         description: "When to run Reachable proof rescans during remediation"
         type: choice
@@ -400,10 +400,14 @@ jobs:
       - name: Create remediation branch
         if: ${{ inputs.remediate && !inputs.rescan_only }}
         run: |
-          BRANCH="reachable-remediate-${GITHUB_RUN_ID}"
+          source_commit="$(git rev-parse --short=8 HEAD)"
+          branch_timestamp="$(date -u +%Y%m%d-%H%M%S)"
+          BRANCH="reachable-remediate-${branch_timestamp}-${source_commit}"
           git config user.name "reachable-remediation-bot"
           git config user.email "security@sthenos.com"
           git switch -c "$BRANCH"
+          echo "Reachable remediation source commit: $source_commit"
+          echo "Reachable remediation branch: $BRANCH"
           echo "REACHABLE_REMEDIATION_BRANCH=$BRANCH" >> "$GITHUB_ENV"
 
       - name: Install selected coding agent
@@ -502,7 +506,7 @@ jobs:
             selected_rules="$(python -c 'import json; from pathlib import Path; d=json.loads(Path(".reachable/remediation-bundle/bundle.json").read_text(encoding="utf-8")); rules=d.get("selected_rules") or d.get("rules") or []; raw=str(d.get("selected_rule_count")).strip(); print(int(raw) if raw.isdigit() else len(rules))')"
             echo "Reachable selected remediation rules: ${selected_rules}"
             if [ "$selected_rules" -le 0 ]; then
-              echo "Reachable generated no remediation rules; stopping."
+              echo "Reachable generated no remediation rules for the remediation branch; stopping the batch loop."
               break
             fi
 

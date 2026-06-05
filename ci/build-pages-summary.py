@@ -492,29 +492,36 @@ def _db_actionable_count(ctx: dict[str, Any], *, deferred_keys: set[tuple[str, s
     conn = sqlite3.connect(Path(ctx["db_path"]))
     conn.row_factory = sqlite3.Row
     scan_id = int(ctx["scan_id"])
-    attacker = _attacker_map(conn, scan_id)
-    rows = conn.execute(
-        """
-        SELECT signal_type, file_path, line_number, app_reachability, risk_level,
-               severity, prod_status
-          FROM signals
-         WHERE scan_id = ?
-           AND COALESCE(prod_status, 'UNKNOWN') != 'NON_PROD'
-           AND COALESCE(risk_level, severity, 'UNKNOWN') NOT IN ('INFO')
-        """,
-        (scan_id,),
-    ).fetchall()
-    count = 0
-    for raw in rows:
-        row = dict(raw)
-        path = _normalize_demo_path(str(row.get("file_path") or ""))
-        line = int(row.get("line_number") or 0)
-        row["normalized_path"] = path
-        row["line_number"] = line
-        row["attacker"] = attacker.get((_db_family(row), path, line), {})
-        if _signal_blocks_remediation(row) and not _row_matches_deferred(row, deferred_keys):
-            count += 1
-    return count
+    try:
+        attacker = _attacker_map(conn, scan_id)
+        rows = conn.execute(
+            """
+            SELECT id, signal_type, finding_id, display_id, file_path, line_number,
+                   severity, title, description, app_reachability, cwe_id, cve_id,
+                   secret_type, pii_type, package_name, package_version, scanner,
+                   rule_id, risk_level, prod_status, remediation_kind,
+                   remediation_target, remediation_action, synthesis_hints_json,
+                   exploit_verdict_json
+              FROM signals
+             WHERE scan_id = ?
+               AND UPPER(COALESCE(prod_status, 'UNKNOWN')) = 'PRODUCTION'
+               AND UPPER(COALESCE(risk_level, severity, 'UNKNOWN')) != 'INFO'
+            """,
+            (scan_id,),
+        ).fetchall()
+        count = 0
+        for raw in rows:
+            row = dict(raw)
+            path = _normalize_demo_path(str(row.get("file_path") or ""))
+            line = int(row.get("line_number") or 0)
+            row["normalized_path"] = path
+            row["line_number"] = line
+            row["attacker"] = attacker.get((_db_family(row), path, line), {})
+            if _signal_blocks_remediation(row) and not _row_matches_deferred(row, deferred_keys):
+                count += 1
+        return count
+    finally:
+        conn.close()
 
 
 def _row_matches_deferred(row: dict[str, Any], deferred_keys: set[tuple[str, str, int]]) -> bool:
@@ -743,6 +750,13 @@ def _signal_exploitability(row: dict[str, Any]) -> str:
         if exploitable in {"0", "false", "no", "not_exploitable", "defended"}:
             return "DEFENDED"
         return "UNCERTAIN"
+    verdict = _exploit_verdict_outcome(row)
+    if verdict == "exploitable":
+        return "EXPLOITABLE"
+    if verdict == "defended":
+        return "DEFENDED"
+    if verdict == "uncertain":
+        return "UNCERTAIN"
     reachability = str(row.get("app_reachability") or "").upper().replace("-", "_").replace(" ", "_")
     if reachability in DEFENDED_STATES:
         return "DEFENDED"
@@ -869,6 +883,12 @@ def _db_match_keys(row: dict[str, Any]) -> set[tuple[str, str, int]]:
 def _signal_blocks_remediation(row: dict[str, Any]) -> bool:
     if not row:
         return False
+    prod_status = str(row.get("prod_status") or "UNKNOWN").upper()
+    if prod_status != "PRODUCTION":
+        return False
+    risk = str(row.get("risk_level") or row.get("severity") or "UNKNOWN").upper()
+    if risk == "INFO":
+        return False
     attacker = row.get("attacker") if isinstance(row.get("attacker"), dict) else {}
     if attacker:
         if str(attacker.get("error") or "").strip():
@@ -878,10 +898,60 @@ def _signal_blocks_remediation(row: dict[str, Any]) -> bool:
             return False
         if exploitable in {"1", "true", "yes", "exploitable"}:
             return True
+    verdict = _exploit_verdict_outcome(row)
+    if verdict == "defended":
+        return False
+    if verdict == "exploitable":
+        return True
     reachability = str(row.get("app_reachability") or "").upper().replace("-", "_").replace(" ", "_")
     if reachability in DEFENDED_STATES:
         return False
-    return reachability in {"EXPLOITABLE", "REACHABLE", "UNKNOWN", ""}
+    return reachability in {"EXPLOITABLE", "REACHABLE", "UNKNOWN"}
+
+
+def _exploit_verdict_outcome(row: dict[str, Any]) -> str:
+    verdict = _json_object(row.get("exploit_verdict_json"))
+    if not verdict:
+        return ""
+    bool_value = _boolish(verdict.get("exploitable"))
+    if bool_value is True:
+        return "exploitable"
+    if bool_value is False:
+        return "defended"
+    for key in ("verdict", "status", "outcome", "attackability"):
+        value = str(verdict.get(key) or "").strip().lower().replace("-", "_").replace(" ", "_")
+        if value in {"exploitable", "attackable", "proven"}:
+            return "exploitable"
+        if value in {"not_exploitable", "defended", "defendable", "not_attackable", "safe"}:
+            return "defended"
+        if value in {"uncertain", "unknown", "error"}:
+            return "uncertain"
+    return ""
+
+
+def _json_object(value: Any) -> dict[str, Any]:
+    if isinstance(value, dict):
+        return value
+    if not isinstance(value, str) or not value.strip():
+        return {}
+    try:
+        parsed = json.loads(value)
+    except json.JSONDecodeError:
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _boolish(value: Any) -> bool | None:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return None
+    text = str(value).strip().lower()
+    if text in {"1", "true", "yes", "y", "exploitable", "attackable"}:
+        return True
+    if text in {"0", "false", "no", "n", "not_exploitable", "defended", "defendable", "not_attackable"}:
+        return False
+    return None
 
 
 def _expected_exploitability(expected: dict[str, Any], signal: dict[str, Any]) -> str:
