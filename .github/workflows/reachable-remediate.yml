@@ -668,7 +668,7 @@ jobs:
           set +e
           pr_output="$(gh pr create \
             --base "${{ inputs.target_branch }}" \
-            --head "$REACHABLE_REMEDIATION_BRANCH" \
+            --head "${GITHUB_REPOSITORY_OWNER}:$REACHABLE_REMEDIATION_BRANCH" \
             --title "Reachable remediation demo" \
             --body-file .reachable/remediation-bundle/pr-body.md 2>&1)"
           pr_status="$?"

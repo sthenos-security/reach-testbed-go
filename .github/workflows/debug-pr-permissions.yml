@@ -60,7 +60,7 @@ jobs:
           echo "Testing PR creation with GITHUB_TOKEN through gh pr create."
           gh pr create \
             --base main \
-            --head "$DIAGNOSTIC_BRANCH" \
+            --head "${GITHUB_REPOSITORY_OWNER}:${DIAGNOSTIC_BRANCH}" \
             --title "Diagnostic PR permission test" \
             --body "This PR was created by the Debug PR Permissions workflow using only the built-in GITHUB_TOKEN."
           pr_number="$(gh pr view "$DIAGNOSTIC_BRANCH" --json number --jq .number)"
