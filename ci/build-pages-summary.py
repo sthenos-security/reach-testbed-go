@@ -21,6 +21,7 @@ from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 SEVERITY_ORDER = {"error": 0, "warning": 1, "note": 2, "none": 3}
 RISK_ORDER = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4, "UNKNOWN": 5}
@@ -1262,6 +1263,13 @@ def _render_html(*, summary: dict[str, Any], generated_at: str, page_url: str, c
     expected_class = "ok" if expected_demo.get("clean") else "bad"
     hero_title = "Reachable fixed the vulnerable branch" if expected_demo.get("clean") else "Reachable remediation needs review"
     hero_headline = str(expected_demo.get("headline") or "Reachable Go Demo")
+    top_meta = _top_metadata_strip(
+        summary=summary,
+        generated_at=generated_at,
+        page_url=page_url,
+        run_url=run_url,
+        after_meta=after_meta,
+    )
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -1285,6 +1293,12 @@ def _render_html(*, summary: dict[str, Any], generated_at: str, page_url: str, c
     .hero h1 {{ font-size:34px; }}
     .verdict {{ border:1px solid rgba(95,224,163,.45); border-radius:8px; background:#0d201a; padding:12px 14px; margin:14px 0; color:#dff8ec; }}
     .verdict strong {{ color:var(--accent); }}
+    .meta-strip {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:8px; margin:0 0 18px; }}
+    .meta-item {{ border:1px solid var(--line); border-radius:8px; padding:9px 10px; background:#101923; min-width:0; }}
+    .meta-label {{ display:block; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.07em; margin-bottom:3px; }}
+    .meta-value {{ display:block; color:var(--fg); font-size:13px; overflow-wrap:anywhere; }}
+    .brand {{ display:flex; align-items:center; gap:9px; border:1px solid rgba(95,224,163,.45); border-radius:8px; padding:9px 11px; background:#0d201a; color:var(--accent); font-weight:800; letter-spacing:.12em; }}
+    .brand .sigma {{ display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border:1px solid rgba(95,224,163,.6); border-radius:6px; font-size:18px; line-height:1; }}
     .subgrid {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(270px,1fr)); gap:12px; margin-top:16px; }}
     .status {{ font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); }}
     .status.ok {{ color:var(--accent); }}
@@ -1329,6 +1343,7 @@ def _render_html(*, summary: dict[str, Any], generated_at: str, page_url: str, c
 </head>
 <body>
   <main>
+    {top_meta}
     <section class="hero {expected_class}">
       <div class="status {expected_class}">Reachable autonomous remediation demo · {html.escape(expected_status)}</div>
       <h1>{html.escape(hero_title)}</h1>
@@ -1424,7 +1439,6 @@ def _render_html(*, summary: dict[str, Any], generated_at: str, page_url: str, c
     <p>Status: <strong>{html.escape(str(remediation.get("status") or "unknown"))}</strong>. {html.escape(str(remediation.get("message") or ""))}</p>
     {_remediation_loop_table(remediation, expected_demo)}
     <p class="muted">Detailed remediation rules are intentionally not published because they are generated prompt material. The public evidence shows the branch, batch count, project-test gate, proof scan, and final DB verdict.</p>
-    <p class="muted">Generated at {html.escape(generated_at)} for {html.escape(str(summary.get("repo") or ""))} / {html.escape(str(summary.get("ref") or ""))} / commit {html.escape(str(summary.get("sha") or ""))}. Page URL: {html.escape(page_url)}</p>
     <footer>Copyright © 2026 Sthenos Security, Inc. All rights reserved.</footer>
   </main>
 </body>
@@ -1552,6 +1566,72 @@ def _run_evidence_table(evidence: dict[str, Any]) -> str:
         for label, value in rows
     )
     return f"<table><tbody>{body}</tbody></table>"
+
+
+def _top_metadata_strip(
+    *,
+    summary: dict[str, Any],
+    generated_at: str,
+    page_url: str,
+    run_url: str,
+    after_meta: dict[str, Any],
+) -> str:
+    repo = str(summary.get("repo") or "")
+    repo_url = _repo_url(repo)
+    branch = str(after_meta.get("branch") or (summary.get("remediation") or {}).get("remediation_branch") or "")
+    branch_url = f"{repo_url}/tree/{branch}" if repo_url and branch else ""
+    workflow_sha = str(summary.get("sha") or "")
+    workflow_short = workflow_sha[:8]
+    workflow_commit_url = f"{repo_url}/commit/{workflow_sha}" if repo_url and workflow_sha else ""
+    proof_sha = str(after_meta.get("commit_hash") or "")
+    proof_short = str(after_meta.get("commit_short") or proof_sha[:8])
+    proof_commit_url = f"{repo_url}/commit/{proof_sha}" if repo_url and proof_sha else ""
+    scan_id = str(after_meta.get("id") or after_meta.get("db_scan_id") or "")
+    generated_dt = _parse_dt(generated_at)
+    pacific = generated_dt.astimezone(ZoneInfo("America/Los_Angeles"))
+    pacific_text = pacific.strftime("%Y-%m-%d %I:%M:%S %p %Z")
+    utc_text = generated_dt.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    return (
+        '<section class="meta-strip" aria-label="Run metadata">'
+        '<div class="brand"><span class="sigma">Σ</span><span>REACHABLE</span></div>'
+        f'{_meta_item("Generated", pacific_text, "", f"UTC: {utc_text}")}'
+        f'{_meta_item("Repository", repo, repo_url)}'
+        f'{_meta_item("Workflow run", str(summary.get("run_id") or ""), run_url)}'
+        f'{_meta_item("Workflow commit", workflow_short, workflow_commit_url)}'
+        f'{_meta_item("Remediation branch", branch, branch_url)}'
+        f'{_meta_item("Proof scan", f"#{scan_id}" if scan_id else "", "")}'
+        f'{_meta_item("Proof commit", proof_short, proof_commit_url)}'
+        f'{_meta_item("Page", page_url, page_url)}'
+        "</section>"
+    )
+
+
+def _parse_dt(value: str) -> datetime:
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return datetime.now(timezone.utc)
+
+
+def _repo_url(repo: str) -> str:
+    if os.environ.get("GITLAB_CI"):
+        return os.environ.get("CI_PROJECT_URL", "")
+    server = os.environ.get("GITHUB_SERVER_URL", "https://github.com")
+    return f"{server}/{repo}" if repo else ""
+
+
+def _meta_item(label: str, value: str, href: str = "", title: str = "") -> str:
+    shown = value or "n/a"
+    value_html = html.escape(shown)
+    if href:
+        value_html = f'<a href="{html.escape(href)}">{value_html}</a>'
+    title_attr = f' title="{html.escape(title)}"' if title else ""
+    return (
+        f'<div class="meta-item"{title_attr}>'
+        f'<span class="meta-label">{html.escape(label)}</span>'
+        f'<span class="meta-value">{value_html}</span>'
+        "</div>"
+    )
 
 
 def _observed_scan_panel(title: str, observed: dict[str, Any]) -> str:
