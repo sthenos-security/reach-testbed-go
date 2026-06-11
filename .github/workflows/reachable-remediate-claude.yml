@@ -47,8 +47,6 @@ jobs:
       publish_report: true
       require_ai: true
       fresh_scan: true
-      run_project_tests: true
-      test_preset: "go"
       reachable_version: "1.0.0b107"
       reachable_dist_repo: "sthenos-security/reach-dist"
     secrets: inherit

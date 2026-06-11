@@ -41,7 +41,7 @@ when the DB proof is clean, open a PR, and publish the verdict page.
 |---------|------------|-------------------------|
 | Branch | `main` | Start from the intentionally vulnerable release candidate. |
 | `remediate` | `true` | Let CI create a fix branch and apply a bounded patch. |
-| `rescan_only` | `false` | Run the full release-gate loop: scan baseline, patch branch, run tests, rescan proof, publish evidence. |
+| `rescan_only` | `false` | Run the full release-gate loop: scan baseline, patch branch, rescan proof, publish evidence. |
 | `target_branch` | `main` | The branch being evaluated as the release candidate. |
 | `remediation_mode` | workflow-specific | `Run Demo (Codex)` uses `codex-openai` with `OPENAI_API_KEY`. `Run Demo (Claude)` uses `claude-anthropic` with `ANTHROPIC_API_KEY`. |
 | `prompt_profile` | `balanced` | Keeps fixes scoped: enough context to repair the issue queue without turning the run into an open-ended refactor. |
@@ -51,12 +51,14 @@ when the DB proof is clean, open a PR, and publish the verdict page.
 | `require_ai` | `true` | Fail fast if the selected AI key is missing, instead of producing a confusing partial run. |
 | `fresh_scan` | `true` | Start from an empty Reachable cache for a clean public demo evidence run. |
 | `create_pr` | `true` | Open a remediation PR from the pushed `reachable-remediate-*` branch after the DB proof passes. Set `false` to use branch-only/manual PR mode. |
-| `run_project_tests` | `true` | Run `go test ./...` after the patch, before the security proof scan. |
 
 Expected result: the workflow creates a `reachable-remediate-*` branch, runs
-the project test gate, rescans that branch, publishes the proof page, and opens
-a pull request for review. The proof page displays the remediation branch name,
-commit, scan IDs, and PR link when GitHub accepts automatic PR creation.
+the selected coding agent with instructions to run appropriate local Go
+validation when available, rescans that branch, publishes the proof page, and
+opens a pull request for review. The proof page displays the remediation branch
+name, commit, scan IDs, and PR link when GitHub accepts automatic PR creation.
+The repository's normal CI and any manual release harness checks remain the
+enforcement point for language-specific tests such as `go test ./...`.
 
 Automatic PR creation is controlled by CI permissions, not by Reachable scanner
 tokens. Branch push, artifact upload, Pages publishing, and SARIF upload use the
@@ -285,9 +287,6 @@ publishes fresh evidence.
 | `require_ai` | `true` | Fails early unless the selected provider key is configured. |
 | `fresh_scan` | `true` | Starts from an empty `~/.reachable` cache for a clean evidence run. |
 | `create_pr` | `true` | Opens a remediation pull request when code changes are successfully produced. |
-| `run_project_tests` | `true` | Runs the repository safety gate before proof scans. |
-| `project_test_command` | `go test ./...` | Command used for the post-agent safety gate. |
-
 The public report should make the selected branch, commit, scan number, final
 proof state, cache state, and artifact links obvious without requiring the
 viewer to know these inputs.
