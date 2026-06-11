@@ -46,10 +46,10 @@ when the DB proof is clean, open a PR, and publish the verdict page.
 | `remediation_mode` | workflow-specific | `Run Demo (Codex)` uses `codex-openai` with `OPENAI_API_KEY`. `Run Demo (Claude)` uses `claude-anthropic` with `ANTHROPIC_API_KEY`. |
 | `prompt_profile` | `balanced` | Keeps fixes scoped: enough context to repair the issue queue without turning the run into an open-ended refactor. |
 | `signal_types` | `all` | Covers all demo blocker classes: CVE, CWE, secret, DLP, and AI findings. |
-| `max_batches` | `5` | Upper bound for serialized fix batches. The workflow stops early as soon as the DB proof is clean. |
+| `max_batches` | `1` | Upper bound for serialized fix batches in this smoke-style public demo. The workflow stops after one bounded pass and proves the result from the database. |
 | `rescan_strategy` | `each_batch` | Rescan after each bounded patch batch so CI can stop once release blockers are gone. |
 | `require_ai` | `true` | Fail fast if the selected AI key is missing, instead of producing a confusing partial run. |
-| `fresh_scan` | `false` | Reuse the Reachable cache for speed. Set `true` only when you intentionally want a clean no-cache evidence run. |
+| `fresh_scan` | `true` | Start from an empty Reachable cache for a clean public demo evidence run. |
 | `create_pr` | `true` | Open a remediation PR from the pushed `reachable-remediate-*` branch after the DB proof passes. Set `false` to use branch-only/manual PR mode. |
 | `run_project_tests` | `true` | Run `go test ./...` after the patch, before the security proof scan. |
 
@@ -92,7 +92,7 @@ write a fix branch.
 | `rescan_only` | `false` | Run only the baseline scan and evidence publication. |
 | `target_branch` | `main` | Branch being evaluated. |
 | `require_ai` | `true` | Fail early if AI enrichment cannot run. |
-| `fresh_scan` | `false` | Reuse cache for speed unless you are testing a clean no-cache run. |
+| `fresh_scan` | `true` | Start from an empty Reachable cache so the public demo run proves a clean install and scan path. |
 
 Expected result: the workflow publishes baseline evidence and blocker counts,
 but no remediation branch or PR is created.
@@ -279,11 +279,11 @@ publishes fresh evidence.
 | `remediation_mode` | `codex-openai` | Selects the agent lane and matching provider secret. |
 | `prompt_profile` | `balanced` | Controls how aggressively Reachable bundles remediation work. |
 | `signal_types` | `all` | Limits remediation to selected signal families, or leaves all families eligible. |
-| `max_batches` | `5` | Bounds the number of serialized agent remediation batches. CI stops early when the DB proof is clean. |
+| `max_batches` | `1` | Bounds the public demo to one serialized remediation batch so the run stays short and auditable. |
 | `rescan_strategy` | `each_batch` | Runs proof scans after each batch so the workflow can stop as soon as the branch is clean. |
 | `scan_extra_flags` | empty | Optional extra scan flags for advanced test runs. |
 | `require_ai` | `true` | Fails early unless the selected provider key is configured. |
-| `fresh_scan` | `false` | Starts from an empty `~/.reachable` cache for a clean evidence run. |
+| `fresh_scan` | `true` | Starts from an empty `~/.reachable` cache for a clean evidence run. |
 | `create_pr` | `true` | Opens a remediation pull request when code changes are successfully produced. |
 | `run_project_tests` | `true` | Runs the repository safety gate before proof scans. |
 | `project_test_command` | `go test ./...` | Command used for the post-agent safety gate. |
