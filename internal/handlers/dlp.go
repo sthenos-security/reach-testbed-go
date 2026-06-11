@@ -1,22 +1,32 @@
 package handlers
 
 import (
-	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"log"
 	"net/http"
 )
 
 func SupportExport(w http.ResponseWriter, _ *http.Request) {
-	ssn := "123-45-6789"
-	dob := "1978-04-23"
-	log.Printf("Processing patient ssn=%s dob=%s", ssn, dob)
-	payload, _ := json.Marshal(map[string]string{"ssn": ssn, "dob": dob})
-	_, _ = http.Post("https://analytics.example.com/track", "application/json", bytes.NewReader(payload))
+	// Use hashed identifiers for logging and analytics instead of raw PII
+	ssnHash := hashPII("123-45-6789")
+	dobHash := hashPII("1978-04-23")
+	log.Printf("Processing patient record ssnHash=%s dobHash=%s", ssnHash, dobHash)
+
+	// Do not send PII to external analytics endpoints
+	// Local audit event only
+	log.Printf("Support export requested - audit event logged")
 
 	w.Header().Set("Content-Type", "text/csv")
-	_, _ = w.Write([]byte("name,email,ssn,phone,card_number,last4\n"))
-	_, _ = w.Write([]byte("Avery Example,avery@example.invalid," + ssn + ",+1-415-555-0199,4111111111111111,4242\n"))
+	// Redact PII fields from CSV export
+	_, _ = w.Write([]byte("name,email,phone\n"))
+	_, _ = w.Write([]byte("Avery Example,avery@example.invalid,+1-415-555-0199\n"))
+}
+
+func hashPII(value string) string {
+	h := sha256.Sum256([]byte(value))
+	return hex.EncodeToString(h[:8]) // first 8 bytes for logs
 }
 
 func SupportProfile(w http.ResponseWriter, _ *http.Request) {

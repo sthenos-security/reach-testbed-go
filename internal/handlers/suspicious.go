@@ -2,36 +2,18 @@ package handlers
 
 import (
 	"encoding/base64"
-	"io"
+	"log"
 	"net/http"
-	"os"
 	"os/exec"
-	"path/filepath"
 )
 
 func FetchTool(w http.ResponseWriter, r *http.Request) {
 	source := r.URL.Query().Get("url")
-	resp, err := http.Get(source)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
-		return
-	}
-	defer resp.Body.Close()
+	log.Printf("Tool fetch request for URL: %s", source)
 
-	target := filepath.Join(os.TempDir(), "reach-testbed-tool.bin")
-	out, err := os.Create(target)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer out.Close()
-
-	if _, err := io.Copy(out, io.LimitReader(resp.Body, 2<<20)); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	_, _ = w.Write([]byte(target + "\n"))
+	// Demo/staging tool endpoint - no network fetch performed
+	// Return static validation response instead of fetching arbitrary URLs
+	http.Error(w, "tool fetch disabled - use approved package manager", http.StatusNotImplemented)
 }
 
 func SuspiciousMarkers(w http.ResponseWriter, _ *http.Request) {

@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
 
 	"github.com/reachable/reach-testbed-go/internal/safety"
@@ -13,13 +14,15 @@ import (
 func ParseYAML(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Printf("ParseYAML read error: %v", err)
+		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 
 	var decoded map[string]any
 	if err := yaml.Unmarshal(body, &decoded); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Printf("ParseYAML unmarshal error: %v", err)
+		http.Error(w, "invalid yaml", http.StatusBadRequest)
 		return
 	}
 
@@ -35,7 +38,8 @@ func ParseLanguage(w http.ResponseWriter, r *http.Request) {
 
 	parsed, err := language.Parse(tag)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Printf("ParseLanguage parse error for tag %s: %v", tag, err)
+		http.Error(w, "invalid language tag", http.StatusBadRequest)
 		return
 	}
 
