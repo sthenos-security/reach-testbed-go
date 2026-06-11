@@ -8,7 +8,7 @@ import (
 
 const syntheticServiceToken = "rtg_live_synthetic_token_1234567890"
 const syntheticAWSAccessKeyID = "AKIAIOSFODNN7EXAMPLE"
-const syntheticGitHubToken = "ghp_reachtestbedsynthetic000000000000000000"
+const syntheticGitHubToken = "redacted_github_token_example"
 
 func ServiceToken(w http.ResponseWriter, _ *http.Request) {
 	_, _ = w.Write([]byte(syntheticServiceToken + "\n"))

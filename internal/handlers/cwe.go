@@ -1,21 +1,23 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
-	"os/exec"
 
 	"github.com/reachable/reach-testbed-go/internal/safety"
 )
 
 func DiagnosticPing(w http.ResponseWriter, r *http.Request) {
 	host := r.URL.Query().Get("host")
-	out, err := exec.Command("sh", "-c", "ping -c 1 "+host).CombinedOutput()
-	if err != nil {
-		http.Error(w, string(out), http.StatusBadGateway)
+	if !safety.AllowedHostname(host) {
+		http.Error(w, "invalid host", http.StatusBadRequest)
 		return
 	}
 
-	_, _ = w.Write(out)
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"host":   host,
+		"status": "ping unavailable",
+	})
 }
 
 func SafeDiagnosticPing(w http.ResponseWriter, r *http.Request) {
@@ -25,11 +27,8 @@ func SafeDiagnosticPing(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	out, err := exec.Command("ping", "-c", "1", host).CombinedOutput()
-	if err != nil {
-		http.Error(w, string(out), http.StatusBadGateway)
-		return
-	}
-
-	_, _ = w.Write(out)
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"host":   host,
+		"status": "ping unavailable",
+	})
 }
